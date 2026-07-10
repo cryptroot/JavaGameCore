@@ -1,0 +1,17 @@
+{
+  "roster.stat.energy": "Energy",
+  "roster.stat.mood": "Mood",
+  "roster.alert.exhausted": "Exhausted",
+
+  "roster.tab.bio": "Bio",
+  "roster.tab.relationship": "Relationship",
+  "roster.tab.gallery": "Gallery",
+  "roster.tab.inventory": "Inventory",
+
+  "inventory.title": "Inventory",
+  "inventory.empty": "No items",
+
+  "task.reject.busy": "{0} is already busy.",
+  "task.reject.tired": "{0} is too tired to take another task.",
+  "task.reject.unavailable": "{0} isn''t available right now."
+}
