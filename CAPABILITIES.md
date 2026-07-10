@@ -37,6 +37,7 @@ Package prefixes: `com.cryptroot.core` (core), `com.cryptroot.tiled` (tiled).
 | Tile world→cell inverse | `tiled.io.TileGeometry` | `columnAt`, `rowAt`, `cellAt` |
 | Grid from a map | `tiled.render.TiledGrids.fromMap` | derive a `core.grid.Grid` from a `TmxMap` |
 | Object-layer → entity spawn | `tiled.render.TiledMap.spawnObjects` + `TmxObjectFactory` | factory turns each `TmxObject` into a `WorldEntity` |
+| Sprite-sheet / flipbook animation | `core.render.SpriteAnimation`, `core.world.component.AnimatedSpriteRenderComponent` | wraps `Animation<TextureRegion>`; `play()`/`idle()`/`advance(delta)`; idle = static first frame |
 
 ## Engine-parity backlog (with Unity) — deliberately NOT built
 These are not needed by the current game (it uses tile-occupancy + distance checks, static
@@ -44,8 +45,6 @@ sprites, and no audio). Build the reusable core primitive **only when a game fir
 still in `core`, not stubbed in your game code (`demo` or an external consumer).
 - **Collision / overlap system** (AABB/shape overlap, trigger volumes). Current games test tile
   occupancy or `Vector2.dst` against an engage range; no general collision exists. → future `core.physics`.
-- **Sprite-sheet / flipbook animation** (`Animation<TextureRegion>` player). Current sprites are
-  static; skeletal animation goes through the existing `NormalMappedDrawable` seam. → future `core.render` component.
 - **Audio manager** (`Sound`/`Music` wrapper). None in core. → future `core.audio`.
 - **Action-map / multi-button / gamepad input.** Only left-click, hover, drag-pan, scroll-zoom and
   UI focus keys exist; raw input is libGDX `InputProcessor`/`InputMultiplexer`. → future `core.input`.
