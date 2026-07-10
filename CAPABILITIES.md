@@ -1,6 +1,8 @@
 # Framework capabilities — search here before building anything
 
-If a capability below is **present** or **new**, use it. Do **not** re-implement it in `game`.
+If a capability below is **present** or **new**, use it. Do **not** re-implement it in your
+game code — whether that's the bundled `demo` sample or an external project that consumes this
+framework as a submodule/library.
 Package prefixes: `com.cryptroot.core` (core), `com.cryptroot.tiled` (tiled).
 
 ## Present (pre-existing)
@@ -39,7 +41,7 @@ Package prefixes: `com.cryptroot.core` (core), `com.cryptroot.tiled` (tiled).
 ## Engine-parity backlog (with Unity) — deliberately NOT built
 These are not needed by the current game (it uses tile-occupancy + distance checks, static
 sprites, and no audio). Build the reusable core primitive **only when a game first needs it** —
-still in `core`, not stubbed in `game`.
+still in `core`, not stubbed in your game code (`demo` or an external consumer).
 - **Collision / overlap system** (AABB/shape overlap, trigger volumes). Current games test tile
   occupancy or `Vector2.dst` against an engage range; no general collision exists. → future `core.physics`.
 - **Sprite-sheet / flipbook animation** (`Animation<TextureRegion>` player). Current sprites are

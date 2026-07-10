@@ -1,7 +1,10 @@
-# game — Cave Defense (`com.cryptroot.demo`)
+# demo — Cave Defense (`com.cryptroot.demo`)
 
-The only module allowed to hold game-specific logic. Depends on `core` + `tiled`. It is the
-**thin** layer: rules, content, balance, and wiring — everything reusable lives in `core`/`tiled`.
+A bundled reference/example consumer of the framework — not the only place game-specific logic
+is allowed to live. Depends on `core` + `tiled`. It is the **thin** layer: rules, content,
+balance, and wiring — everything reusable lives in `core`/`tiled`. If this repo is embedded as a
+submodule/library (as it is here) and your actual game lives in a sibling project, apply these
+same rules there instead of forcing everything into `demo`.
 
 > Before adding a class here, check [../CAPABILITIES.md](../CAPABILITIES.md). If it's a grid,
 > path, timer, tween, health bar, entity, render, UI, event, camera, or asset primitive, it
@@ -24,4 +27,4 @@ The only module allowed to hold game-specific logic. Depends on `core` + `tiled`
 `TiledMap.addTo(world)`, with drag-pan/scroll-zoom).
 
 ## Build
-`mvn -pl game -am package` builds the fat-jar; run `com.cryptroot.demo.CaveDemoLauncher`.
+`mvn -pl demo -am package` builds the fat-jar; run `com.cryptroot.demo.CaveDemoLauncher`.

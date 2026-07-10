@@ -13,7 +13,7 @@
     <modules>
         <module>core</module>
         <module>tiled</module>
-        <module>game</module>
+        <module>demo</module>
     </modules>
 
     <properties>

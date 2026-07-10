@@ -8,7 +8,7 @@ import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
  *
  * <p>Run from the IDE, or from the command line with:
  *
- * <pre>{@code mvn -pl game -am exec:java}</pre>
+ * <pre>{@code mvn -pl demo -am exec:java}</pre>
  *
  * <p>The window is sized 5:6 to match the 20×24 tile ({@code 1280×1536} px) demo map so the whole
  * cave is framed. An 8-bit stencil buffer is requested because the core {@code
