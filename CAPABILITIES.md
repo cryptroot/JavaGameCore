@@ -38,13 +38,20 @@ Package prefixes: `com.cryptroot.core` (core), `com.cryptroot.tiled` (tiled).
 | Grid from a map | `tiled.render.TiledGrids.fromMap` | derive a `core.grid.Grid` from a `TmxMap` |
 | Object-layer → entity spawn | `tiled.render.TiledMap.spawnObjects` + `TmxObjectFactory` | factory turns each `TmxObject` into a `WorldEntity` |
 | Sprite-sheet / flipbook animation | `core.render.SpriteAnimation`, `core.world.component.AnimatedSpriteRenderComponent` | wraps `Animation<TextureRegion>`; `play()`/`idle()`/`advance(delta)`; idle = static first frame |
+| 2D collider abstraction | `core.physics.Collider` | `bounds(Rectangle)` (AABB) + default `overlaps(Collider)`; extends `EntityComponent` so it auto-registers on a `WorldEntity` |
+| Box (AABB) collider | `core.physics.BoxCollider` | anchors to a live `PositionComponent` + offset/size — never owns/duplicates position (mirrors `WorldHealthBarComponent`'s anchor pattern) |
+| Collider vs. grid/tile-map blocking | `core.physics.GridCollisions.isBlocked(Collider,Grid,Board)` | reuses `core.path.Board` (the same abstraction pathfinding uses) for "which cells are blocked"; out-of-grid always counts as blocked |
+| Tile layer → `Board` bridge | `tiled.render.TiledBoards.fromLayer(TmxMap,TileLayer,IntPredicate)` | decodes gids once, flips Tiled's top-down row into `core.grid`'s bottom-up convention, strips flip-flags via `GlobalTileId.id`; the blocked-gid predicate stays game-specific |
 
 ## Engine-parity backlog (with Unity) — deliberately NOT built
 These are not needed by the current game (it uses tile-occupancy + distance checks, static
 sprites, and no audio). Build the reusable core primitive **only when a game first needs it** —
 still in `core`, not stubbed in your game code (`demo` or an external consumer).
-- **Collision / overlap system** (AABB/shape overlap, trigger volumes). Current games test tile
-  occupancy or `Vector2.dst` against an engage range; no general collision exists. → future `core.physics`.
+- **Per-frame collision system / trigger volumes** (auto-checking overlaps between entities every
+  frame with enter/exit signals, the collision equivalent of `HoverSystem`). `core.physics.Collider`
+  / `BoxCollider` / `GridCollisions` now provide the shape and grid-blocking primitives; games still
+  call these manually (e.g. from an `UpdateComponent`). Build the automatic system only when a game
+  first needs entity-vs-entity collision. → future `core.physics` addition, not a new package.
 - **Audio manager** (`Sound`/`Music` wrapper). None in core. → future `core.audio`.
 - **Action-map / multi-button / gamepad input.** Only left-click, hover, drag-pan, scroll-zoom and
   UI focus keys exist; raw input is libGDX `InputProcessor`/`InputMultiplexer`. → future `core.input`.
