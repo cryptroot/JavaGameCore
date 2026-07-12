@@ -6,15 +6,15 @@ import com.cryptroot.core.grid.Grid;
 import com.cryptroot.core.path.Board;
 
 /**
- * Bridges a {@link Collider} against a {@link Grid} + {@link Board} — the "does this shape
- * overlap a blocked tile/cell" check — without either the collider or the grid/board knowing
- * about each other.
+ * Bridges a {@link Collider} against a {@link Grid} + {@link Board} — the "does this shape overlap
+ * a blocked tile/cell" check — without either the collider or the grid/board knowing about each
+ * other.
  *
  * <p>{@link Board} already models "which cells may not be entered" for {@link
  * com.cryptroot.core.path.Pathfinder}; this class reuses the exact same abstraction for movement
- * collision, so one {@code Board} implementation can serve both pathfinding and physical
- * blocking. What makes a cell blocked (a tile map's edge, an occupied cell, …) is entirely up to
- * that {@link Board} implementation — this class only does the shape/grid geometry.
+ * collision, so one {@code Board} implementation can serve both pathfinding and physical blocking.
+ * What makes a cell blocked (a tile map's edge, an occupied cell, …) is entirely up to that {@link
+ * Board} implementation — this class only does the shape/grid geometry.
  */
 public final class GridCollisions {
 

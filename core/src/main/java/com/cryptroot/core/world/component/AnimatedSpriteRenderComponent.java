@@ -10,13 +10,13 @@ import com.cryptroot.core.world.RenderComponent;
  * Renders a {@link SpriteAnimation}'s current frame at a configurable world position.
  *
  * <p>Implements both {@link RenderComponent} and {@link PositionComponent}, mirroring {@link
- * TextureRenderComponent} but drawing {@link SpriteAnimation#currentFrame()} every frame instead
- * of a single static region. Moving the entity via {@link #moveTo} repositions the drawn quad.
+ * TextureRenderComponent} but drawing {@link SpriteAnimation#currentFrame()} every frame instead of
+ * a single static region. Moving the entity via {@link #moveTo} repositions the drawn quad.
  *
  * <p>The animation itself is driven externally — call {@link #advance(float)} once per frame
- * (typically from a game-specific {@link com.cryptroot.core.world.UpdateComponent}, since an
- * entity may only register one) and {@link #play()}/{@link #idle()} to start/stop the flipbook,
- * e.g. based on whether the entity is currently moving.
+ * (typically from a game-specific {@link com.cryptroot.core.world.UpdateComponent}, since an entity
+ * may only register one) and {@link #play()}/{@link #idle()} to start/stop the flipbook, e.g. based
+ * on whether the entity is currently moving.
  *
  * <p>The {@link #sortKey()} returns the entity's world Y ({@link #y()}), so animated sprites placed
  * in the {@link RenderPass#WORLD} layer participate correctly in painter's-algorithm Y-sorting.

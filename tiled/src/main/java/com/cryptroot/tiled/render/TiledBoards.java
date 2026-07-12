@@ -28,8 +28,8 @@ public final class TiledBoards {
    * @param map the owning map (supplies width/height for the row-flip and gid-array indexing)
    * @param layer the tile layer whose gids determine blocking; must belong to {@code map}
    * @param blockedGid tested against each cell's flip-flag-stripped gid; {@code true} blocks it
-   * @return a {@link Board} that answers queries for any {@code (col,row)} within {@code
-   *     map}'s bounds ({@code core.grid} convention: row 0 = bottom)
+   * @return a {@link Board} that answers queries for any {@code (col,row)} within {@code map}'s
+   *     bounds ({@code core.grid} convention: row 0 = bottom)
    */
   public static Board fromLayer(TmxMap map, TileLayer layer, IntPredicate blockedGid) {
     int[] gids = TileDataCodec.decode(layer.data(), layer.width() * layer.height());

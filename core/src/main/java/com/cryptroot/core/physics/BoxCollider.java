@@ -26,8 +26,8 @@ public final class BoxCollider implements Collider {
   private final float height;
 
   /**
-   * @param anchor the live position this collider tracks (typically the same object as the
-   *     entity's render component)
+   * @param anchor the live position this collider tracks (typically the same object as the entity's
+   *     render component)
    * @param offsetX box's bottom-left X offset from the anchor's X, in world units
    * @param offsetY box's bottom-left Y offset from the anchor's Y, in world units
    * @param width box width in world units

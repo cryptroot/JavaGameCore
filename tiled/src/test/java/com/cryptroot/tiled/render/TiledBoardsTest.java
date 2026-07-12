@@ -39,7 +39,8 @@ class TiledBoardsTest {
     Board board = TiledBoards.fromLayer(map, ground, gid -> gid < 1 || gid > 4);
     for (int col = 0; col < map.width(); col++) {
       for (int row = 0; row < map.height(); row++) {
-        assertFalse(board.isBlocked(col, row), "gid at (" + col + "," + row + ") should be in [1,4]");
+        assertFalse(
+            board.isBlocked(col, row), "gid at (" + col + "," + row + ") should be in [1,4]");
       }
     }
   }
