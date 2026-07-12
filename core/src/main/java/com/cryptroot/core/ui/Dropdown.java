@@ -6,6 +6,7 @@ import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.cryptroot.core.event.Signal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 
 /**
@@ -75,6 +76,8 @@ public final class Dropdown<T> extends BoundedWidget {
    * @param w fixed width of the collapsed button
    */
   public Dropdown(UiSkin skin, Texture pixel, float x, float y, float w) {
+    Objects.requireNonNull(skin, "skin must not be null");
+    Objects.requireNonNull(pixel, "pixel must not be null");
     this.skin = skin;
     this.pixel = pixel;
     this.fieldX = x;
@@ -95,6 +98,8 @@ public final class Dropdown<T> extends BoundedWidget {
    * automatically when the list is non-empty. Does not emit {@link #onSelected}.
    */
   public void setItems(List<T> newItems, Function<T, String> newLabeller) {
+    Objects.requireNonNull(newItems, "newItems must not be null");
+    Objects.requireNonNull(newLabeller, "newLabeller must not be null");
     this.items = new ArrayList<>(newItems);
     this.labeller = newLabeller;
     this.selected = newItems.isEmpty() ? null : newItems.get(0);

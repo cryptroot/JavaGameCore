@@ -5,6 +5,7 @@ import com.cryptroot.core.event.EventBus;
 import com.cryptroot.core.event.Signal0;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Drives <em>ambient</em> (optional, repeatable) conversations that sit outside the main story flow
@@ -61,9 +62,9 @@ public final class AmbientConversationDirector {
       DialogueBlackboard blackboard,
       EventBus eventBus,
       InteractionPrompt prompt) {
-    this.view = view;
-    this.blackboard = blackboard;
-    this.eventBus = eventBus;
+    this.view = Objects.requireNonNull(view, "view must not be null");
+    this.blackboard = Objects.requireNonNull(blackboard, "blackboard must not be null");
+    this.eventBus = Objects.requireNonNull(eventBus, "eventBus must not be null");
     this.prompt = prompt != null ? prompt : InteractionPrompt.NONE;
   }
 
@@ -81,6 +82,9 @@ public final class AmbientConversationDirector {
    * @param promptText the on-screen hint, e.g. {@code "Click on Laura to chat"}
    */
   public void arm(Signal0 clickSource, DialogueGraph graph, String promptText) {
+    Objects.requireNonNull(clickSource, "clickSource must not be null");
+    Objects.requireNonNull(graph, "graph must not be null");
+    Objects.requireNonNull(promptText, "promptText must not be null");
     disarm();
     this.graph = graph;
     this.promptText = promptText;

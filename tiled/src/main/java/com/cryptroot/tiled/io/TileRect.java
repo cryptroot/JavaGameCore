@@ -9,4 +9,13 @@ package com.cryptroot.tiled.io;
  * @param width width in pixels
  * @param height height in pixels
  */
-public record TileRect(int x, int y, int width, int height) {}
+public record TileRect(int x, int y, int width, int height) {
+  public TileRect {
+    if (width < 0) {
+      throw new IllegalArgumentException("width must not be negative, was " + width);
+    }
+    if (height < 0) {
+      throw new IllegalArgumentException("height must not be negative, was " + height);
+    }
+  }
+}

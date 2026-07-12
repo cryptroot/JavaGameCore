@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.viewport.Viewport;
+import java.util.Objects;
 
 /**
  * Maps a world-space rectangle to a GL scissor region for batch-clipped drawing.
@@ -43,6 +44,7 @@ public final class ScissorRegion {
    * @param h height in world coordinates
    */
   public ScissorRegion(Viewport viewport, float x, float y, float w, float h) {
+    Objects.requireNonNull(viewport, "viewport must not be null");
     this.viewport = viewport;
     this.x = x;
     this.y = y;

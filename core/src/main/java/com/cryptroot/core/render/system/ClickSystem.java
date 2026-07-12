@@ -4,6 +4,7 @@ import com.cryptroot.core.world.BoundsComponent;
 import com.cryptroot.core.world.ClickableComponent;
 import com.cryptroot.core.world.World;
 import com.cryptroot.core.world.WorldEntity;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -19,6 +20,7 @@ public final class ClickSystem {
    * @return the hit entity, or {@link Optional#empty()} if nothing was hit
    */
   public Optional<WorldEntity> handleClick(World world, float worldX, float worldY) {
+    Objects.requireNonNull(world, "world must not be null");
     var entities = world.entities();
     for (int i = entities.size() - 1; i >= 0; i--) {
       WorldEntity e = entities.get(i);

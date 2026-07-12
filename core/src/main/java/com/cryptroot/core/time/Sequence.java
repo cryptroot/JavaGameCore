@@ -2,6 +2,7 @@ package com.cryptroot.core.time;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.BooleanSupplier;
 
 /**
@@ -82,12 +83,14 @@ public final class Sequence {
 
     /** Blocks until {@code condition} is {@code true} (checked each tick). */
     public Builder waitUntil(BooleanSupplier condition) {
+      Objects.requireNonNull(condition, "condition must not be null");
       steps.add(delta -> condition.getAsBoolean() ? delta : -1f);
       return this;
     }
 
     /** Runs {@code action} instantaneously, then advances. */
     public Builder run(Runnable action) {
+      Objects.requireNonNull(action, "action must not be null");
       steps.add(
           delta -> {
             action.run();

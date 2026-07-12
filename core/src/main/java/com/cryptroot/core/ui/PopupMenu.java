@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * A floating pop-up menu that auto-sizes to fit its entries.
@@ -100,6 +101,8 @@ public final class PopupMenu extends BoundedWidget {
    * @param font font used for entry labels
    */
   public PopupMenu(Texture pixel, BitmapFont font) {
+    Objects.requireNonNull(pixel, "pixel must not be null");
+    Objects.requireNonNull(font, "font must not be null");
     this.font = font;
     bg = new PixelRect(pixel, COLOR_BG);
     rowHighlight = new PixelRect(pixel, COLOR_ROW_HOVER);
@@ -123,6 +126,8 @@ public final class PopupMenu extends BoundedWidget {
    * @param action callback fired when the row is clicked
    */
   public void addEntry(String label, Runnable action) {
+    Objects.requireNonNull(label, "label must not be null");
+    Objects.requireNonNull(action, "action must not be null");
     entries.add(new Entry(label, action));
     TextLabel lbl = new TextLabel(font, label, 0f, 0f, COLOR_LABEL);
     rowLabels.add(lbl);

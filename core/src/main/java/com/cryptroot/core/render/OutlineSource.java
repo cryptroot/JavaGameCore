@@ -1,6 +1,7 @@
 package com.cryptroot.core.render;
 
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
@@ -68,6 +69,7 @@ public interface OutlineSource {
    * spineDrawable::draw}) at collection time, capturing the frame's current fade alpha.
    */
   static OutlineSource of(float alpha, Consumer<PolygonSpriteBatch> drawer) {
+    Objects.requireNonNull(drawer, "drawer must not be null");
     return new OutlineSource() {
       @Override
       public boolean outlineActive() {

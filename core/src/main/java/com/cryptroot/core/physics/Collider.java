@@ -2,6 +2,7 @@ package com.cryptroot.core.physics;
 
 import com.badlogic.gdx.math.Rectangle;
 import com.cryptroot.core.world.EntityComponent;
+import java.util.Objects;
 
 /**
  * A 2D collision shape.
@@ -36,6 +37,7 @@ public interface Collider extends EntityComponent {
    * conservative first pass for any shape, since {@link #bounds} is always an AABB.
    */
   default boolean overlaps(Collider other) {
+    Objects.requireNonNull(other, "other must not be null");
     Rectangle a = bounds(new Rectangle());
     Rectangle b = other.bounds(new Rectangle());
     return a.overlaps(b);

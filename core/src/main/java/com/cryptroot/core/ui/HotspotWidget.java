@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.utils.Disposable;
 import com.cryptroot.core.event.Signal0;
 import com.cryptroot.core.render.SelectionOutlineRenderer;
+import java.util.Objects;
 
 /**
  * An interactive UI widget that draws a texture overlay (e.g. a map landmark extracted from the
@@ -156,6 +157,7 @@ public final class HotspotWidget extends BoundedWidget implements OutlineCapture
    *     TextureRegion#getRegionHeight()}
    */
   public static HotspotWidget scaled(TextureRegion region, float drawX, float drawY, float scale) {
+    Objects.requireNonNull(region, "region must not be null");
     return new HotspotWidget(
         region, drawX, drawY, region.getRegionWidth() * scale, region.getRegionHeight() * scale);
   }
@@ -179,6 +181,7 @@ public final class HotspotWidget extends BoundedWidget implements OutlineCapture
       float drawY,
       float drawW,
       float drawH) {
+    Objects.requireNonNull(region, "region must not be null");
     this.region = region;
     this.labelFont = labelFont;
     this.label = label;
@@ -207,6 +210,7 @@ public final class HotspotWidget extends BoundedWidget implements OutlineCapture
    * re-download on the next hover event.
    */
   public void setRegion(TextureRegion region) {
+    Objects.requireNonNull(region, "region must not be null");
     this.region = region;
   }
 

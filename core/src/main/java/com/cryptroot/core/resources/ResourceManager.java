@@ -9,6 +9,7 @@ import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.utils.Disposable;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Centralised texture cache that owns the lifecycle of every {@link Texture} loaded through it.
@@ -99,6 +100,9 @@ public final class ResourceManager implements Disposable {
    * @return the cached-or-newly-created {@link Texture}
    */
   public Texture createTexture(String classpath, TextureFilter minFilter, TextureFilter magFilter) {
+    Objects.requireNonNull(classpath, "classpath must not be null");
+    Objects.requireNonNull(minFilter, "minFilter must not be null");
+    Objects.requireNonNull(magFilter, "magFilter must not be null");
     return textureCache.computeIfAbsent(
         classpath,
         cp -> {
@@ -123,6 +127,8 @@ public final class ResourceManager implements Disposable {
    * @return the cached-or-newly-created {@link Texture}
    */
   public Texture loadTexture(ResourcePath root, String name) {
+    Objects.requireNonNull(root, "root must not be null");
+    Objects.requireNonNull(name, "name must not be null");
     return createTexture(root.prefix() + name, TextureFilter.Linear, TextureFilter.Linear);
   }
 
@@ -138,6 +144,8 @@ public final class ResourceManager implements Disposable {
    */
   public Texture loadTexture(
       ResourcePath root, String name, TextureFilter minFilter, TextureFilter magFilter) {
+    Objects.requireNonNull(root, "root must not be null");
+    Objects.requireNonNull(name, "name must not be null");
     return createTexture(root.prefix() + name, minFilter, magFilter);
   }
 
@@ -152,6 +160,7 @@ public final class ResourceManager implements Disposable {
    * @return the cached-or-newly-created {@link TextureAtlas}
    */
   public TextureAtlas loadAtlas(String classpath) {
+    Objects.requireNonNull(classpath, "classpath must not be null");
     return atlasCache.computeIfAbsent(classpath, cp -> new TextureAtlas(Gdx.files.classpath(cp)));
   }
 

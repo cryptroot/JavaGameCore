@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Orchestrates story conversations: it owns the active {@link DialogueRunner}, binds it to a shared
@@ -97,6 +98,11 @@ public final class StoryDirector<C> {
       RequirementTracker<C> tracker,
       EventBus eventBus,
       DialogueView widget) {
+    Objects.requireNonNull(context, "context must not be null");
+    Objects.requireNonNull(storyState, "storyState must not be null");
+    Objects.requireNonNull(tracker, "tracker must not be null");
+    Objects.requireNonNull(eventBus, "eventBus must not be null");
+    Objects.requireNonNull(widget, "widget must not be null");
     this.context = context;
     this.storyState = storyState;
     this.tracker = tracker;
@@ -120,6 +126,7 @@ public final class StoryDirector<C> {
    * @param completionFlag story flag written on completion (may be {@code null})
    */
   public void play(DialogueGraph graph, String completionFlag) {
+    Objects.requireNonNull(graph, "graph must not be null");
     if (completionFlag != null && storyState.flag(completionFlag)) {
       return; // replay guard
     }

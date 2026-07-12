@@ -4,6 +4,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.cryptroot.tiled.io.GlobalTileId;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Maps global tile ids (gids) to the {@link TextureRegion} that draws them, across every tileset
@@ -34,6 +35,7 @@ public final class TileAtlas {
    * @param byGid mapping of flag-stripped gid to drawable tile; copied defensively
    */
   public TileAtlas(Map<Integer, Tile> byGid) {
+    Objects.requireNonNull(byGid, "byGid must not be null");
     this.byGid = new HashMap<>(byGid);
   }
 

@@ -1,6 +1,7 @@
 package com.cryptroot.core.ui;
 
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import java.util.Objects;
 
 /** Shared UI layout utility methods. */
 public final class UiHelper {
@@ -16,6 +17,7 @@ public final class UiHelper {
    * @return {@code font.getCapHeight() + padding * 2f}
    */
   public static float barHeight(BitmapFont font, float padding) {
+    Objects.requireNonNull(font, "font must not be null");
     return font.getCapHeight() + padding * 2f;
   }
 }

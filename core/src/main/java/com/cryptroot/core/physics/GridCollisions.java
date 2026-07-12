@@ -4,6 +4,7 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.cryptroot.core.grid.Grid;
 import com.cryptroot.core.path.Board;
+import java.util.Objects;
 
 /**
  * Bridges a {@link Collider} against a {@link Grid} + {@link Board} — the "does this shape overlap
@@ -34,6 +35,9 @@ public final class GridCollisions {
    * independent of whatever {@code board} says about individual cells.
    */
   public static boolean isBlocked(Collider collider, Grid grid, Board board) {
+    Objects.requireNonNull(collider, "collider must not be null");
+    Objects.requireNonNull(grid, "grid must not be null");
+    Objects.requireNonNull(board, "board must not be null");
     Rectangle bounds = collider.bounds(new Rectangle());
 
     int minCol = MathUtils.floor((bounds.x - grid.originX()) / grid.cellWidth());

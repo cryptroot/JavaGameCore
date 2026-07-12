@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Loads a TMX map from the classpath into a render-ready {@link TiledMap}: it parses the map, loads
@@ -63,6 +64,10 @@ public final class TiledMapLoader {
       RenderPass renderPass,
       TextureFilter minFilter,
       TextureFilter magFilter) {
+    Objects.requireNonNull(resources, "resources must not be null");
+    Objects.requireNonNull(renderPass, "renderPass must not be null");
+    Objects.requireNonNull(minFilter, "minFilter must not be null");
+    Objects.requireNonNull(magFilter, "magFilter must not be null");
     this.resources = resources;
     this.renderPass = renderPass;
     this.minFilter = minFilter;
@@ -78,6 +83,7 @@ public final class TiledMapLoader {
    * @throws UnsupportedOperationException if the map is not a finite orthogonal map
    */
   public TiledMap load(String tmxClasspath) throws IOException {
+    Objects.requireNonNull(tmxClasspath, "tmxClasspath must not be null");
     TmxMap map = parser.parse(tmxClasspath);
     if (!TmxParser.isRenderable(map)) {
       throw new UnsupportedOperationException(

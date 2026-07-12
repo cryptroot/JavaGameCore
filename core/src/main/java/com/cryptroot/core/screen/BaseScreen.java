@@ -6,6 +6,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.cryptroot.core.GameContext;
 import com.cryptroot.core.ui.UiLayer;
+import java.util.Objects;
 
 /**
  * Abstract base for all screens in any game built on {@code myjourney-core}.
@@ -37,6 +38,7 @@ public abstract class BaseScreen<C extends GameContext> extends ScreenAdapter {
   protected final UiLayer uiLayer;
 
   protected BaseScreen(C context) {
+    Objects.requireNonNull(context, "context must not be null");
     this.context = context;
     this.uiLayer = new UiLayer(context.viewport(), context.camera());
   }

@@ -10,6 +10,7 @@ import com.badlogic.gdx.utils.Align;
 import com.cryptroot.core.event.Signal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * A vertical stack of clickable option rows used by {@link ConversationWidget} to present a {@link
@@ -52,6 +53,8 @@ public final class ChoiceList implements UiWidget {
   public final Signal<Integer> onSelect = new Signal<>();
 
   public ChoiceList(Texture pixel, BitmapFont font) {
+    Objects.requireNonNull(pixel, "pixel must not be null");
+    Objects.requireNonNull(font, "font must not be null");
     this.pixel = pixel;
     this.font = font;
   }
@@ -70,6 +73,7 @@ public final class ChoiceList implements UiWidget {
 
   /** Replaces the displayed options. {@code enabledFlags} may be {@code null} (all enabled). */
   public void setOptions(List<String> optionLabels, boolean[] enabledFlags) {
+    Objects.requireNonNull(optionLabels, "optionLabels must not be null");
     labels.clear();
     enabled.clear();
     for (int i = 0; i < optionLabels.size(); i++) {

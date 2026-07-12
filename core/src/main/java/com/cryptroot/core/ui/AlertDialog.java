@@ -3,6 +3,7 @@ package com.cryptroot.core.ui;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.math.Rectangle;
+import java.util.Objects;
 
 /**
  * A small, modal-style alert dialog with a title bar, a body message, and a built-in close button.
@@ -51,7 +52,15 @@ public final class AlertDialog extends CloseablePanel {
    */
   public AlertDialog(
       Texture pixel, UiSkin skin, BitmapFont font, float x, float y, float w, float h) {
-    super(pixel, skin, "", x, y, w, h);
+    super(
+        Objects.requireNonNull(pixel, "pixel must not be null"),
+        Objects.requireNonNull(skin, "skin must not be null"),
+        "",
+        x,
+        y,
+        w,
+        h);
+    Objects.requireNonNull(font, "font must not be null");
     Rectangle cb = getContentBounds();
     messageLabel = new TextLabel(font, "", cb.x, cb.y + cb.height / 2f + BODY_HALF_CAP);
     messageLabel.setAlign(TextLabel.HAlign.CENTER, cb.width);
@@ -84,6 +93,8 @@ public final class AlertDialog extends CloseablePanel {
    * @param message body text shown in the content area
    */
   public void show(String title, String message) {
+    Objects.requireNonNull(title, "title must not be null");
+    Objects.requireNonNull(message, "message must not be null");
     setTitle(title);
     messageLabel.setText(message);
     open();

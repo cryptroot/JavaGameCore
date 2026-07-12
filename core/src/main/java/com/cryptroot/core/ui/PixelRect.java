@@ -3,6 +3,7 @@ package com.cryptroot.core.ui;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
+import java.util.Objects;
 
 /**
  * A non-interactive widget that draws a solid colour-filled rectangle.
@@ -55,6 +56,8 @@ public final class PixelRect implements UiWidget {
    * @param color fill colour (copied; caller may discard the source)
    */
   public PixelRect(Texture pixel, Color color) {
+    Objects.requireNonNull(pixel, "pixel must not be null");
+    Objects.requireNonNull(color, "color must not be null");
     this.pixel = pixel;
     this.color = color.cpy();
   }
@@ -72,6 +75,7 @@ public final class PixelRect implements UiWidget {
 
   /** Updates the fill colour (copied). */
   public void setColor(Color newColor) {
+    Objects.requireNonNull(newColor, "newColor must not be null");
     color.set(newColor);
   }
 

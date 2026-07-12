@@ -51,6 +51,16 @@ Worked examples:
   one per interface type. No transform hierarchy, no parenting; position is `PositionComponent`.
 - **Tests are plain JUnit 5** (no headless-GL, no Mockito). Keep algorithmic code GL-free and
   unit-test it; leave `draw()` bodies uncovered as the existing render components do.
+- **Every public constructor/method either fails fast or fails soft — deliberately, never by
+  accident.** Default to fail-fast: validate arguments at the API boundary and throw immediately
+  (`Objects.requireNonNull` for null references, `IllegalArgumentException`/`IllegalStateException`
+  for invalid values — see `core.grid.Grid`, `core.dialogue.DialogueGraph`,
+  `core.render.SpriteAnimation`). Fail-soft (clamping, defaulting, silently no-op'ing) is only
+  acceptable when it is the documented, intentional contract of that API — e.g. `core.time.Timer`/
+  `Cadence` clamp a negative duration, `Localization.getOrDefault` falls back instead of throwing,
+  `EventBus.publish` no-ops when there are no subscribers. Document the fail-soft behavior in the
+  method's Javadoc so it reads as a choice, not a missing check. Never let bad input silently
+  propagate un-validated and un-documented.
 
 ## Build & test
 Run from `Java/` directory. PowerShell chains with `;`.
@@ -59,8 +69,16 @@ mvn -pl core test            # core only (no external network needed)
 mvn -pl tiled -am test       # tiled + core   (needs jackson-dataformat-xml resolvable)
 mvn -pl demo  -am package    # demo fat-jar
 mvn test                     # full reactor
+mvn spotless:apply           # reformat before finishing any change (see below)
 ```
 If Maven Central is unreachable in your environment, artifacts must already be in `~/.m2`.
+
+**Always run `mvn spotless:apply` after editing Java files and before considering a change
+done** (root `pom.xml` wires `com.diffplug.spotless:spotless-maven-plugin` with Google Java
+Format, but its `check`/`apply` goals are **not** bound to any lifecycle phase — `mvn test`/
+`package`/`verify` will not catch or fix formatting for you). Run it against the whole reactor
+(plain `mvn spotless:apply` from the repo root) rather than a single module, since it also fixes
+import order/unused imports repo-wide.
 
 ## Read next
 - [CAPABILITIES.md](Java/CAPABILITIES.md) — what already exists (search here before building).

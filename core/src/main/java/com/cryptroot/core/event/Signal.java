@@ -2,6 +2,7 @@ package com.cryptroot.core.event;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
@@ -29,6 +30,7 @@ public final class Signal<T> {
    *     be needed.
    */
   public DisposableConnection connect(Consumer<T> listener) {
+    Objects.requireNonNull(listener, "listener must not be null");
     listeners.add(listener);
     return () -> listeners.remove(listener);
   }

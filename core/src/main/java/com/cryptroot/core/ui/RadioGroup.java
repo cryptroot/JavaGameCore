@@ -5,6 +5,7 @@ import com.cryptroot.core.event.Signal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * A mutually-exclusive group of {@link Checkbox} instances, itself a {@link CompositeWidget} so it
@@ -51,6 +52,12 @@ public final class RadioGroup extends CompositeWidget {
    */
   public RadioGroup(
       UiSkin skin, Texture pixel, List<String> labels, float x, float startY, float spacing) {
+    Objects.requireNonNull(skin, "skin must not be null");
+    Objects.requireNonNull(pixel, "pixel must not be null");
+    Objects.requireNonNull(labels, "labels must not be null");
+    if (labels.isEmpty()) {
+      throw new IllegalArgumentException("labels must not be empty");
+    }
     this.x = x;
     this.startY = startY;
     this.spacing = spacing;

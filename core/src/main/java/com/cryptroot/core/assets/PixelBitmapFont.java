@@ -11,6 +11,7 @@ import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.JsonValue;
 import com.cryptroot.core.resources.ResourceManager;
 import com.cryptroot.core.resources.ResourcePath;
+import java.util.Objects;
 
 /**
  * Loads a low-resolution bitmap font from a GameMaker-style glyph atlas: a single PNG sheet plus a
@@ -69,6 +70,9 @@ public final class PixelBitmapFont {
    * @return a ready-to-use {@link BitmapFont} (caller disposes)
    */
   public static BitmapFont load(ResourceManager resources, String jsonName, String pngName) {
+    Objects.requireNonNull(resources, "resources must not be null");
+    Objects.requireNonNull(jsonName, "jsonName must not be null");
+    Objects.requireNonNull(pngName, "pngName must not be null");
     Texture texture =
         resources.loadTexture(
             ResourcePath.FONTS, pngName, TextureFilter.Nearest, TextureFilter.Nearest);

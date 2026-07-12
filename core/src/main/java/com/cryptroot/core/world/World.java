@@ -4,6 +4,7 @@ import com.cryptroot.core.event.Signal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -36,6 +37,7 @@ public final class World {
    * }</pre>
    */
   public WorldEntity add(WorldEntity entity) {
+    Objects.requireNonNull(entity, "entity must not be null");
     entities.add(entity);
     return entity;
   }
@@ -50,6 +52,7 @@ public final class World {
 
   /** Returns all entities that carry the given tag. */
   public List<WorldEntity> findByTag(String tag) {
+    Objects.requireNonNull(tag, "tag must not be null");
     return entities.stream()
         .filter(e -> e.has(TagComponent.class) && e.get(TagComponent.class).get().hasTag(tag))
         .collect(Collectors.toList());
@@ -57,6 +60,7 @@ public final class World {
 
   /** Returns {@code true} if at least one entity has a component of the given type. */
   public boolean hasEntitiesWith(Class<? extends EntityComponent> componentType) {
+    Objects.requireNonNull(componentType, "componentType must not be null");
     for (WorldEntity e : entities) {
       if (e.has(componentType)) return true;
     }
@@ -74,6 +78,7 @@ public final class World {
    * @return {@code true} if the entity was present and removed
    */
   public boolean remove(WorldEntity entity) {
+    Objects.requireNonNull(entity, "entity must not be null");
     boolean removed = entities.remove(entity);
     if (removed) onRemoved.emit(entity);
     return removed;
@@ -85,6 +90,7 @@ public final class World {
    * update()}). Duplicate queue requests for the same entity collapse to a single removal.
    */
   public void queueRemove(WorldEntity entity) {
+    Objects.requireNonNull(entity, "entity must not be null");
     pendingRemoval.add(entity);
   }
 

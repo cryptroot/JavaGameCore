@@ -4,6 +4,7 @@ import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Abstract base class for widgets that own and delegate to child {@link UiWidget}s.
@@ -68,6 +69,7 @@ public abstract class CompositeWidget implements UiWidget {
   // -------------------------------------------------------------------------
 
   protected final void addChild(UiWidget child) {
+    Objects.requireNonNull(child, "child must not be null");
     children.add(child);
   }
 

@@ -34,4 +34,14 @@ Put reusable, game-agnostic engine primitives here. See root [../CAPABILITIES.md
 - Extract render/color math into `static` pure methods (e.g. `WorldHealthBarComponent.barColor`,
   `TintFlashRenderComponent.tintAt`) so it is unit-testable without GL. Tests are plain JUnit 5
   with anonymous no-op `RenderComponent`/`TextureRegion` fakes; do not call `draw()` in tests.
+- **Fail fast by default.** Every public constructor/method validates its arguments and throws
+  immediately at the API boundary: `Objects.requireNonNull(x, "x must not be null")` for stored/
+  dereferenced references, `IllegalArgumentException` for out-of-range or malformed values (see
+  `Grid`, `DialogueGraph`, `SpriteAnimation`). Skip validation only for per-frame hot-path methods
+  (`draw(Batch,...)`, `update(delta)`) unless the check is cheap and clearly warranted. Fail-soft
+  (clamp/default/no-op) is fine where it's the class's documented contract (`Timer`/`Cadence`
+  clamping a negative duration, `SequenceComponent` treating a null sequence as "done") — but say
+  so in the Javadoc.
+- Run `mvn spotless:apply` from the repo root after editing any Java file — it is not bound to
+  `test`/`package`, so nothing else formats or checks import order for you.
 - `mvn -pl core test` needs no network.

@@ -3,6 +3,7 @@ package com.cryptroot.core.world.component;
 import com.cryptroot.core.dialogue.Speaker;
 import com.cryptroot.core.ui.ConversationWidget;
 import com.cryptroot.core.world.DialogueSpeakerComponent;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -24,12 +25,15 @@ public final class DefaultDialogueSpeakerComponent implements DialogueSpeakerCom
 
   /** Entity has a speaker but does not auto-start a conversation on click. */
   public DefaultDialogueSpeakerComponent(Speaker speaker) {
+    Objects.requireNonNull(speaker, "speaker must not be null");
     this.speaker = speaker;
     this.conversation = null;
   }
 
   /** Entity has a speaker and auto-starts {@code conversation} when clicked. */
   public DefaultDialogueSpeakerComponent(Speaker speaker, ConversationWidget conversation) {
+    Objects.requireNonNull(speaker, "speaker must not be null");
+    Objects.requireNonNull(conversation, "conversation must not be null");
     this.speaker = speaker;
     this.conversation = conversation;
   }

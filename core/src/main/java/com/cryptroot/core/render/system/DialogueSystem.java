@@ -2,6 +2,7 @@ package com.cryptroot.core.render.system;
 
 import com.cryptroot.core.world.DialogueSpeakerComponent;
 import com.cryptroot.core.world.WorldEntity;
+import java.util.Objects;
 
 /**
  * Handles the automatic conversation start when a {@link DialogueSpeakerComponent} entity is
@@ -17,6 +18,7 @@ public final class DialogueSystem {
    * com.cryptroot.core.dialogue.ConversationWidget}, starts the conversation.
    */
   public void onEntityClicked(WorldEntity entity) {
+    Objects.requireNonNull(entity, "entity must not be null");
     entity
         .get(DialogueSpeakerComponent.class)
         .flatMap(DialogueSpeakerComponent::conversation)

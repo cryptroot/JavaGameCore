@@ -8,6 +8,7 @@ import com.cryptroot.core.render.RenderPass;
 import com.cryptroot.core.world.PositionComponent;
 import com.cryptroot.core.world.RenderComponent;
 import com.cryptroot.core.world.UpdateComponent;
+import java.util.Objects;
 
 /**
  * A world-space health bar that floats above an entity — the framework form of Unity's procedural
@@ -36,6 +37,18 @@ public final class WorldHealthBarComponent implements RenderComponent, UpdateCom
       Color empty,
       Color background) {
 
+    public Config {
+      Objects.requireNonNull(full, "full must not be null");
+      Objects.requireNonNull(empty, "empty must not be null");
+      Objects.requireNonNull(background, "background must not be null");
+      if (width <= 0f) {
+        throw new IllegalArgumentException("width must be positive: " + width);
+      }
+      if (height <= 0f) {
+        throw new IllegalArgumentException("height must be positive: " + height);
+      }
+    }
+
     public static Config defaults(float width, float height, float offsetX, float offsetY) {
       return new Config(
           width,
@@ -62,6 +75,8 @@ public final class WorldHealthBarComponent implements RenderComponent, UpdateCom
   private boolean visible = true;
 
   public WorldHealthBarComponent(TextureRegion pixel, PositionComponent anchor, Config cfg) {
+    Objects.requireNonNull(anchor, "anchor must not be null");
+    Objects.requireNonNull(cfg, "cfg must not be null");
     this.pixel = pixel;
     this.anchor = anchor;
     this.cfg = cfg;

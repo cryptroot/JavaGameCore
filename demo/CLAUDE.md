@@ -28,3 +28,6 @@ same rules there instead of forcing everything into `demo`.
 
 ## Build
 `mvn -pl demo -am package` builds the fat-jar; run `com.cryptroot.demo.CaveDemoLauncher`.
+
+Follow the same fail-fast/fail-soft rule as `core`/`tiled` (see root `../CLAUDE.md`) for any new
+game code, and run `mvn spotless:apply` from the repo root after editing Java files here.

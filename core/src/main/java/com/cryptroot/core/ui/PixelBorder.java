@@ -3,6 +3,7 @@ package com.cryptroot.core.ui;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
+import java.util.Objects;
 
 /**
  * A non-interactive widget that draws a solid pixel-based rectangular border.
@@ -56,6 +57,8 @@ public final class PixelBorder implements UiWidget {
    * @param color border colour (copied; caller may discard the source)
    */
   public PixelBorder(Texture pixel, float thickness, Color color) {
+    Objects.requireNonNull(pixel, "pixel must not be null");
+    Objects.requireNonNull(color, "color must not be null");
     this.pixel = pixel;
     this.thickness = thickness;
     this.color = color.cpy();

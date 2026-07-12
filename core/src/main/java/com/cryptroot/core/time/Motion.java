@@ -1,6 +1,7 @@
 package com.cryptroot.core.time;
 
 import com.badlogic.gdx.math.Vector2;
+import java.util.Objects;
 
 /**
  * Movement helpers — the libGDX-flavoured equivalent of Unity's {@code Vector3.MoveTowards}, which
@@ -18,6 +19,7 @@ public final class Motion {
    *     pos} is snapped exactly onto the target
    */
   public static boolean moveTowards(Vector2 pos, float tx, float ty, float maxDelta) {
+    Objects.requireNonNull(pos, "pos must not be null");
     float dx = tx - pos.x;
     float dy = ty - pos.y;
     float distSq = dx * dx + dy * dy;
@@ -33,6 +35,7 @@ public final class Motion {
 
   /** {@link #moveTowards(Vector2, float, float, float)} toward {@code target}. */
   public static boolean moveTowards(Vector2 pos, Vector2 target, float maxDelta) {
+    Objects.requireNonNull(target, "target must not be null");
     return moveTowards(pos, target.x, target.y, maxDelta);
   }
 }

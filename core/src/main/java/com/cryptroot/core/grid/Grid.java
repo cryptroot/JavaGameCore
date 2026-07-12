@@ -3,6 +3,7 @@ package com.cryptroot.core.grid;
 import com.badlogic.gdx.math.GridPoint2;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -97,6 +98,7 @@ public final class Grid {
 
   /** World center of cell {@code (col,row)} written into {@code out}; returns {@code out}. */
   public Vector2 cellToWorld(int col, int row, Vector2 out) {
+    Objects.requireNonNull(out, "out must not be null");
     out.x = originX + (col + 0.5f) * cellWidth;
     out.y = originY + (row + 0.5f) * cellHeight;
     return out;
@@ -117,6 +119,7 @@ public final class Grid {
    * semantics so a point exactly on a cell's lower/left edge belongs to that cell.
    */
   public boolean worldToCell(float wx, float wy, GridPoint2 out) {
+    Objects.requireNonNull(out, "out must not be null");
     int col = MathUtils.floor((wx - originX) / cellWidth);
     int row = MathUtils.floor((wy - originY) / cellHeight);
     if (!inBounds(col, row)) return false;

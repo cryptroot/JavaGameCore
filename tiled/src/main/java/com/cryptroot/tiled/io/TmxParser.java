@@ -9,6 +9,7 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Objects;
 
 /**
  * Reads Tiled TMX maps (and their referenced TSX tilesets) from the classpath into the {@code
@@ -43,6 +44,7 @@ public final class TmxParser {
    * @throws IOException if the map or a referenced tileset cannot be read or parsed
    */
   public TmxMap parse(String classpathResource) throws IOException {
+    Objects.requireNonNull(classpathResource, "classpathResource must not be null");
     byte[] bytes = readClasspath(classpathResource);
     TmxMap map = mapper.readValue(bytes, TmxMap.class);
     resolveExternalTilesets(map, classpathResource);
@@ -58,6 +60,7 @@ public final class TmxParser {
    * @throws IOException if the tileset cannot be read or parsed
    */
   public TmxTileset parseTileset(String classpathResource) throws IOException {
+    Objects.requireNonNull(classpathResource, "classpathResource must not be null");
     return mapper.readValue(readClasspath(classpathResource), TmxTileset.class);
   }
 
@@ -86,6 +89,7 @@ public final class TmxParser {
    *     maps parse successfully but cannot be turned into render components.
    */
   public static boolean isRenderable(TmxMap map) {
+    Objects.requireNonNull(map, "map must not be null");
     return map.orientation() == Orientation.ORTHOGONAL && !map.infinite();
   }
 }

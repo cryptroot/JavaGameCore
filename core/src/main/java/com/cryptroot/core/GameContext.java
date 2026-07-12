@@ -28,6 +28,10 @@ public abstract class GameContext implements Disposable {
   private final AssetRegistry assets;
 
   protected GameContext(float worldWidth, float worldHeight) {
+    if (worldWidth <= 0f || worldHeight <= 0f) {
+      throw new IllegalArgumentException(
+          "world dimensions must be positive, got " + worldWidth + "x" + worldHeight);
+    }
     camera = new OrthographicCamera();
     viewport = new FitViewport(worldWidth, worldHeight, camera);
     batch = new PolygonSpriteBatch();

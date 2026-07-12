@@ -16,6 +16,7 @@ import com.cryptroot.core.event.EventBus;
 import com.cryptroot.core.event.Signal0;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * A composite widget that renders a conversation driven by a {@link DialogueRunner}. It displays
@@ -119,6 +120,8 @@ public final class ConversationWidget extends BoundedWidget implements DialogueV
   // -------------------------------------------------------------------------
 
   public ConversationWidget(float x, float y, float w, float h, Texture pixel, BitmapFont font) {
+    Objects.requireNonNull(pixel, "pixel must not be null");
+    Objects.requireNonNull(font, "font must not be null");
     this.cx = x;
     this.cy = y;
     this.cw = w;
@@ -182,6 +185,7 @@ public final class ConversationWidget extends BoundedWidget implements DialogueV
    */
   @Override
   public void rebind(DialogueRunner r) {
+    Objects.requireNonNull(r, "r must not be null");
     loopOnEnd = false;
     connectRunner(r);
     started = true;
@@ -202,6 +206,9 @@ public final class ConversationWidget extends BoundedWidget implements DialogueV
    * #start()}.
    */
   public void setGraph(DialogueGraph graph, MapDialogueBlackboard blackboard, EventBus eventBus) {
+    Objects.requireNonNull(graph, "graph must not be null");
+    Objects.requireNonNull(blackboard, "blackboard must not be null");
+    Objects.requireNonNull(eventBus, "eventBus must not be null");
     DialogueRunner r = new DialogueRunner(graph, blackboard, eventBus);
     loopOnEnd = false;
     connectRunner(r);

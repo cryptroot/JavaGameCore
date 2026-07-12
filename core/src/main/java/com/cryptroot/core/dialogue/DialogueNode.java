@@ -1,6 +1,7 @@
 package com.cryptroot.core.dialogue;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * A single node in a {@link DialogueGraph}.
@@ -28,7 +29,13 @@ public sealed interface DialogueNode
   String id();
 
   /** A spoken line delivered by {@code speaker}; click-advances to {@code nextId}. */
-  record Line(String id, Speaker speaker, String text, String nextId) implements DialogueNode {}
+  record Line(String id, Speaker speaker, String text, String nextId) implements DialogueNode {
+    public Line {
+      Objects.requireNonNull(id, "id must not be null");
+      Objects.requireNonNull(text, "text must not be null");
+      Objects.requireNonNull(nextId, "nextId must not be null");
+    }
+  }
 
   /**
    * A branching point: {@code speaker} delivers {@code prompt} and the player picks one of {@code
@@ -37,6 +44,9 @@ public sealed interface DialogueNode
   record Choice(String id, Speaker speaker, String prompt, List<Option> options)
       implements DialogueNode {
     public Choice {
+      Objects.requireNonNull(id, "id must not be null");
+      Objects.requireNonNull(prompt, "prompt must not be null");
+      Objects.requireNonNull(options, "options must not be null");
       options = List.copyOf(options);
     }
   }
@@ -57,14 +67,31 @@ public sealed interface DialogueNode
       WaitMode waitMode,
       boolean costsAction,
       String nextId)
-      implements DialogueNode {}
+      implements DialogueNode {
+    public Action {
+      Objects.requireNonNull(id, "id must not be null");
+      Objects.requireNonNull(requirementKey, "requirementKey must not be null");
+      Objects.requireNonNull(hintText, "hintText must not be null");
+      Objects.requireNonNull(waitMode, "waitMode must not be null");
+      Objects.requireNonNull(nextId, "nextId must not be null");
+    }
+  }
 
   /**
    * Fires {@code event} as the conversation passes through, then immediately continues to {@code
    * nextId} (no waiting).
    */
-  record Event(String id, DialogueEvent event, String nextId) implements DialogueNode {}
+  record Event(String id, DialogueEvent event, String nextId) implements DialogueNode {
+    public Event {
+      Objects.requireNonNull(id, "id must not be null");
+      Objects.requireNonNull(nextId, "nextId must not be null");
+    }
+  }
 
   /** Terminal node — ends the conversation. */
-  record End(String id) implements DialogueNode {}
+  record End(String id) implements DialogueNode {
+    public End {
+      Objects.requireNonNull(id, "id must not be null");
+    }
+  }
 }
