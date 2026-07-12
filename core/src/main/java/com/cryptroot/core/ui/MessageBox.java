@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.badlogic.gdx.utils.Align;
 import com.cryptroot.core.dialogue.Speaker;
+import java.util.Objects;
 
 /**
  * A rectangular display widget that shows the current speaker name and body text for a dialogue
@@ -93,6 +94,8 @@ public final class MessageBox implements UiWidget {
   // -------------------------------------------------------------------------
 
   public MessageBox(Texture pixel, BitmapFont font, float x, float y, float w, float h) {
+    Objects.requireNonNull(pixel, "pixel must not be null");
+    Objects.requireNonNull(font, "font must not be null");
     this.pixel = pixel;
     this.font = font;
     setBounds(x, y, w, h);
@@ -135,6 +138,8 @@ public final class MessageBox implements UiWidget {
    * @param text body text to display (will be word-wrapped)
    */
   public void setContent(Speaker speaker, String text) {
+    Objects.requireNonNull(speaker, "speaker must not be null");
+    Objects.requireNonNull(text, "text must not be null");
     this.speakerName = speaker.name();
     this.bodyText = text;
     this.visible = true;

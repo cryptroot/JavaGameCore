@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.cryptroot.core.render.RenderPass;
 import com.cryptroot.core.world.RenderComponent;
 import com.cryptroot.core.world.UpdateComponent;
+import java.util.Objects;
 
 /**
  * A hit-flash tint that wraps any {@link RenderComponent}. It reproduces the Unity pattern of
@@ -30,17 +31,20 @@ public final class TintFlashRenderComponent implements RenderComponent, UpdateCo
   private float duration; // 0 = not flashing
 
   public TintFlashRenderComponent(RenderComponent delegate) {
+    Objects.requireNonNull(delegate, "delegate must not be null");
     this.delegate = delegate;
   }
 
   /** Sets the resting colour the flash decays back to (default white). */
   public void setBaseColor(Color base) {
+    Objects.requireNonNull(base, "base must not be null");
     baseColor.set(base);
     if (duration <= 0f) tint.set(base);
   }
 
   /** Starts a flash from {@code flashColor} decaying to the base over {@code durationSec}. */
   public void flash(Color flashColor, float durationSec) {
+    Objects.requireNonNull(flashColor, "flashColor must not be null");
     if (durationSec <= 0f) {
       tint.set(baseColor);
       duration = 0f;

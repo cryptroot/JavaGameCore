@@ -4,6 +4,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
+import java.util.Objects;
 
 /**
  * A self-contained, display-only text widget.
@@ -69,6 +70,8 @@ public final class TextLabel implements UiWidget {
   // -------------------------------------------------------------------------
 
   public TextLabel(BitmapFont font, String text, float x, float y) {
+    Objects.requireNonNull(font, "font must not be null");
+    Objects.requireNonNull(text, "text must not be null");
     this.font = font;
     this.text = text;
     this.x = x;
@@ -78,6 +81,7 @@ public final class TextLabel implements UiWidget {
 
   public TextLabel(BitmapFont font, String text, float x, float y, Color color) {
     this(font, text, x, y);
+    Objects.requireNonNull(color, "color must not be null");
     this.color = color.cpy();
   }
 
@@ -87,6 +91,7 @@ public final class TextLabel implements UiWidget {
 
   /** Updates the displayed text. Marks the layout dirty. Returns {@code this} for chaining. */
   public TextLabel setText(String newText) {
+    Objects.requireNonNull(newText, "newText must not be null");
     if (!newText.equals(text)) {
       text = newText;
       dirty = true;
@@ -101,6 +106,7 @@ public final class TextLabel implements UiWidget {
 
   /** Sets the draw colour (copied). Returns {@code this} for chaining. */
   public TextLabel setColor(Color newColor) {
+    Objects.requireNonNull(newColor, "newColor must not be null");
     color = newColor.cpy();
     dirty = true;
     return this;
@@ -114,6 +120,7 @@ public final class TextLabel implements UiWidget {
    *     around {@code x} instead
    */
   public TextLabel setAlign(HAlign align, float targetWidth) {
+    Objects.requireNonNull(align, "align must not be null");
     this.align = align;
     this.targetWidth = targetWidth;
     dirty = true;

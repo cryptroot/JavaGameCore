@@ -7,6 +7,7 @@ import com.badlogic.gdx.math.Rectangle;
 import com.cryptroot.core.event.Signal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * A {@link Panel} with a row of named tabs at the top. Clicking a tab makes that tab's content
@@ -123,6 +124,8 @@ public final class TabbedPanel extends Panel {
   public TabbedPanel(
       Texture pixel, UiSkin skin, float x, float y, float w, float h, TabPosition tabPosition) {
     super(pixel, x, y, w, h);
+    Objects.requireNonNull(skin, "skin must not be null");
+    Objects.requireNonNull(tabPosition, "tabPosition must not be null");
     this.skin = skin;
     this.tabPosition = tabPosition;
   }
@@ -144,6 +147,7 @@ public final class TabbedPanel extends Panel {
    */
   public int addTab(String name) {
     int index = tabButtons.size();
+    Objects.requireNonNull(name, "name must not be null");
     TabButton btn = new TabButton(skin, name);
     btn.onClick.connect(() -> setActiveTab(index));
     btn.setActive(index == activeTab);
@@ -165,6 +169,7 @@ public final class TabbedPanel extends Panel {
    * @throws IndexOutOfBoundsException if {@code tabIndex} is out of range
    */
   public void addWidget(int tabIndex, UiWidget widget) {
+    Objects.requireNonNull(widget, "widget must not be null");
     tabContents.get(tabIndex).add(widget);
   }
 

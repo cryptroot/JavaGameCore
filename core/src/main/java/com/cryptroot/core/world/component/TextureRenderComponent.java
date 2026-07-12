@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.cryptroot.core.render.RenderPass;
 import com.cryptroot.core.world.PositionComponent;
 import com.cryptroot.core.world.RenderComponent;
+import java.util.Objects;
 
 /**
  * Renders a static {@link TextureRegion} at a configurable world position.
@@ -34,6 +35,14 @@ public final class TextureRenderComponent implements RenderComponent, PositionCo
    */
   public TextureRenderComponent(
       TextureRegion region, float x, float y, float width, float height, RenderPass renderPass) {
+    Objects.requireNonNull(region, "region must not be null");
+    Objects.requireNonNull(renderPass, "renderPass must not be null");
+    if (width <= 0f) {
+      throw new IllegalArgumentException("width must be positive: " + width);
+    }
+    if (height <= 0f) {
+      throw new IllegalArgumentException("height must be positive: " + height);
+    }
     this.region = region;
     this.x = x;
     this.y = y;

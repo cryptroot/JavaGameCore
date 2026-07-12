@@ -13,6 +13,7 @@ import com.cryptroot.core.render.SelectionOutlineRenderer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Manages a collection of {@link UiWidget}s for a single screen, providing:
@@ -106,6 +107,8 @@ public final class UiLayer {
   private float outlineAlpha;
 
   public UiLayer(Viewport viewport, OrthographicCamera camera) {
+    Objects.requireNonNull(viewport, "viewport must not be null");
+    Objects.requireNonNull(camera, "camera must not be null");
     this.viewport = viewport;
     this.camera = camera;
   }
@@ -130,6 +133,7 @@ public final class UiLayer {
    * receive pointer events first.
    */
   public void add(UiWidget widget, int zOrder) {
+    Objects.requireNonNull(widget, "widget must not be null");
     entries.add(new Entry(widget, zOrder));
     rebuildSorted();
     widget.layout();
@@ -280,6 +284,7 @@ public final class UiLayer {
       PolygonSpriteBatch batch,
       Matrix4 projectionMatrix,
       Viewport viewport) {
+    Objects.requireNonNull(sor, "sor must not be null");
     ArrayList<OutlineCaptureSource> sources = new ArrayList<>();
     int blockZ = blockingZForPointer();
     for (Entry e : ascending) {
@@ -301,6 +306,7 @@ public final class UiLayer {
    * @param batch the polygon sprite batch (must be in a begin/end block)
    */
   public void drawOutlines(SelectionOutlineRenderer sor, PolygonSpriteBatch batch) {
+    Objects.requireNonNull(sor, "sor must not be null");
     if (outlineAlpha > 0f) {
       sor.drawOutline(batch, outlineAlpha);
     }

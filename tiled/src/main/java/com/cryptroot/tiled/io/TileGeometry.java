@@ -1,6 +1,7 @@
 package com.cryptroot.tiled.io;
 
 import com.badlogic.gdx.math.GridPoint2;
+import java.util.Objects;
 
 /**
  * Pure coordinate math converting orthogonal tile grid positions into libGDX world coordinates.
@@ -86,6 +87,7 @@ public final class TileGeometry {
       int tileWidth,
       int tileHeight,
       GridPoint2 out) {
+    Objects.requireNonNull(out, "out must not be null");
     int col = columnAt(worldX, tileWidth);
     int row = rowAt(worldY, mapHeight, tileHeight);
     if (col < 0 || col >= mapWidth || row < 0 || row >= mapHeight) return false;

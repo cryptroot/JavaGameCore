@@ -5,6 +5,7 @@ import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -178,6 +179,7 @@ public final class TmxTileset {
    * @param def the tileset parsed from the referenced TSX file
    */
   public void mergeExternal(TmxTileset def) {
+    Objects.requireNonNull(def, "def must not be null");
     this.name = def.name;
     this.tilewidth = def.tilewidth;
     this.tileheight = def.tileheight;

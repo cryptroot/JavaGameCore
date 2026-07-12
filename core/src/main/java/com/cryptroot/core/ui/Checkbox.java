@@ -4,6 +4,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.cryptroot.core.event.Signal;
+import java.util.Objects;
 
 /**
  * A toggle checkbox widget.
@@ -63,6 +64,9 @@ public final class Checkbox extends BoundedWidget {
    * @param initial initial checked state
    */
   public Checkbox(UiSkin skin, Texture pixel, String label, float x, float y, boolean initial) {
+    Objects.requireNonNull(skin, "skin must not be null");
+    Objects.requireNonNull(pixel, "pixel must not be null");
+    Objects.requireNonNull(label, "label must not be null");
     this.skin = skin;
     this.pixel = pixel;
     this.label = label;

@@ -2,6 +2,7 @@ package com.cryptroot.core.event;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * A zero-argument, multi-listener delegate.
@@ -30,6 +31,7 @@ public final class Signal0 {
    *     be needed.
    */
   public DisposableConnection connect(Runnable listener) {
+    Objects.requireNonNull(listener, "listener must not be null");
     listeners.add(listener);
     return () -> listeners.remove(listener);
   }

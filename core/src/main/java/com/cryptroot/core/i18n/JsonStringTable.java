@@ -8,6 +8,7 @@ import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * {@link Localization} backed by flat JSON string tables loaded from the classpath.
@@ -30,7 +31,7 @@ public final class JsonStringTable implements Localization {
   private final Map<String, String> table = new HashMap<>();
 
   public JsonStringTable(Locale locale) {
-    this.locale = locale;
+    this.locale = Objects.requireNonNull(locale, "locale must not be null");
   }
 
   /**
@@ -42,6 +43,7 @@ public final class JsonStringTable implements Localization {
    * @return this table, for chaining
    */
   public JsonStringTable merge(String base) {
+    Objects.requireNonNull(base, "base must not be null");
     String path = base + "_" + locale.getLanguage() + ".json";
     try (InputStream stream = getClass().getClassLoader().getResourceAsStream(path)) {
       if (stream == null) {

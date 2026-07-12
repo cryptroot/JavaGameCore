@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * An immutable, validated directed graph of {@link DialogueNode}s with a single entry point. Build
@@ -62,6 +63,7 @@ public final class DialogueGraph {
 
     /** Adds an arbitrary node. */
     public Builder add(DialogueNode node) {
+      Objects.requireNonNull(node, "node must not be null");
       if (nodes.containsKey(node.id())) {
         throw new IllegalArgumentException("Duplicate node id: " + node.id());
       }

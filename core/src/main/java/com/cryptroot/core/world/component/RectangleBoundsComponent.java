@@ -3,6 +3,7 @@ package com.cryptroot.core.world.component;
 import com.badlogic.gdx.math.Rectangle;
 import com.cryptroot.core.world.BoundsComponent;
 import com.cryptroot.core.world.PositionComponent;
+import java.util.Objects;
 
 /**
  * Hit-tests an entity using a fixed axis-aligned {@link Rectangle}.
@@ -24,11 +25,18 @@ public final class RectangleBoundsComponent implements BoundsComponent, Position
    * @param height rectangle height in world units
    */
   public RectangleBoundsComponent(float x, float y, float width, float height) {
+    if (width <= 0f) {
+      throw new IllegalArgumentException("width must be positive: " + width);
+    }
+    if (height <= 0f) {
+      throw new IllegalArgumentException("height must be positive: " + height);
+    }
     this.bounds = new Rectangle(x, y, width, height);
   }
 
   /** Constructs from an existing rectangle (copied — the original is not modified). */
   public RectangleBoundsComponent(Rectangle rect) {
+    Objects.requireNonNull(rect, "rect must not be null");
     this.bounds = new Rectangle(rect);
   }
 

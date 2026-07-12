@@ -2,6 +2,7 @@ package com.cryptroot.tiled.render;
 
 import com.cryptroot.core.grid.Grid;
 import com.cryptroot.tiled.model.TmxMap;
+import java.util.Objects;
 
 /**
  * Optional convenience for deriving a {@link Grid} from a parsed {@link TmxMap}.
@@ -29,6 +30,7 @@ public final class TiledGrids {
    * (originX,originY)}, with one cell per tile.
    */
   public static Grid fromMap(TmxMap map, float originX, float originY) {
+    Objects.requireNonNull(map, "map must not be null");
     return new Grid(originX, originY, map.tileWidth(), map.tileHeight(), map.width(), map.height());
   }
 }

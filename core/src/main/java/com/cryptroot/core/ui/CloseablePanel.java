@@ -4,6 +4,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.math.Rectangle;
 import com.cryptroot.core.event.Signal0;
+import java.util.Objects;
 
 /**
  * A {@link Panel} with a title bar and a close ("×") button in the top-right corner.
@@ -108,7 +109,9 @@ public class CloseablePanel extends Panel {
    */
   public CloseablePanel(
       Texture pixel, UiSkin skin, String title, float x, float y, float w, float h) {
-    super(pixel, x, y, w, h);
+    super(Objects.requireNonNull(pixel, "pixel must not be null"), x, y, w, h);
+    Objects.requireNonNull(skin, "skin must not be null");
+    Objects.requireNonNull(title, "title must not be null");
     this.px = x;
     this.py = y;
     this.pw = w;
@@ -151,6 +154,7 @@ public class CloseablePanel extends Panel {
 
   /** Updates the text shown in the title bar. */
   public void setTitle(String title) {
+    Objects.requireNonNull(title, "title must not be null");
     titleLabel.setText(title);
   }
 

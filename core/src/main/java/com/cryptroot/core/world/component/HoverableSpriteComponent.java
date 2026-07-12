@@ -9,6 +9,7 @@ import com.cryptroot.core.render.RenderPass;
 import com.cryptroot.core.world.BoundsComponent;
 import com.cryptroot.core.world.ClickableComponent;
 import com.cryptroot.core.world.RenderComponent;
+import java.util.Objects;
 
 /**
  * A clickable {@link TextureRegion} that darkens while the cursor is over it.
@@ -67,6 +68,9 @@ public final class HoverableSpriteComponent
    */
   public HoverableSpriteComponent(
       TextureRegion region, float x, float y, RenderPass renderPass, Color hoverTint) {
+    Objects.requireNonNull(region, "region must not be null");
+    Objects.requireNonNull(renderPass, "renderPass must not be null");
+    Objects.requireNonNull(hoverTint, "hoverTint must not be null");
     this.region = region;
     this.x = x;
     this.y = y;

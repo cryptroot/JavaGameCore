@@ -1,5 +1,7 @@
 package com.cryptroot.core.dialogue;
 
+import java.util.Objects;
+
 /**
  * One selectable option within a {@link DialogueNode.Choice}.
  *
@@ -11,6 +13,11 @@ package com.cryptroot.core.dialogue;
  */
 public record Option(
     String text, String nextId, DialogueCondition enabledWhen, DialogueEffect onSelect) {
+
+  public Option {
+    Objects.requireNonNull(text, "text must not be null");
+    Objects.requireNonNull(nextId, "nextId must not be null");
+  }
 
   /** An always-enabled option with no side-effect. */
   public static Option to(String text, String nextId) {

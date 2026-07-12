@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * A {@link Speaker} backed by static PNG textures mapped to semantic keys.
@@ -54,6 +55,8 @@ public final class StaticSpeaker implements Speaker {
    * @param talkTexture texture shown while speaking; {@code null} falls back to idle
    */
   public StaticSpeaker(String displayName, Texture idleTexture, Texture talkTexture) {
+    Objects.requireNonNull(displayName, "displayName must not be null");
+    Objects.requireNonNull(idleTexture, "idleTexture must not be null");
     this.displayName = displayName;
     this.idleTexture = idleTexture;
     this.currentTexture = idleTexture;
@@ -70,6 +73,8 @@ public final class StaticSpeaker implements Speaker {
    * @return {@code this} for fluent chaining
    */
   public StaticSpeaker mapAnimation(String key, Texture texture) {
+    Objects.requireNonNull(key, "key must not be null");
+    Objects.requireNonNull(texture, "texture must not be null");
     textureMap.put(key, texture);
     return this;
   }
@@ -90,6 +95,7 @@ public final class StaticSpeaker implements Speaker {
 
   @Override
   public void draw(PolygonSpriteBatch batch) {
+    Objects.requireNonNull(batch, "batch must not be null");
     if (drawW <= 0 || drawH <= 0) return;
     float drawX = mirrorX ? x + drawW : x;
     float scaleX = mirrorX ? -1f : 1f;

@@ -3,6 +3,7 @@ package com.cryptroot.core.world;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -43,6 +44,8 @@ public final class WorldEntity {
    * @return {@code this} for fluent chaining
    */
   public <T extends EntityComponent> WorldEntity with(Class<T> type, T component) {
+    Objects.requireNonNull(type, "type must not be null");
+    Objects.requireNonNull(component, "component must not be null");
     components.put(type, component);
     autoRegister(component);
     return this;
@@ -54,11 +57,13 @@ public final class WorldEntity {
    */
   @SuppressWarnings("unchecked")
   public <T extends EntityComponent> Optional<T> get(Class<T> type) {
+    Objects.requireNonNull(type, "type must not be null");
     return Optional.ofNullable((T) components.get(type));
   }
 
   /** Returns {@code true} if a component is registered under {@code type}. */
   public <T extends EntityComponent> boolean has(Class<T> type) {
+    Objects.requireNonNull(type, "type must not be null");
     return components.containsKey(type);
   }
 

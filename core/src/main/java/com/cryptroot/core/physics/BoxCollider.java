@@ -2,6 +2,7 @@ package com.cryptroot.core.physics;
 
 import com.badlogic.gdx.math.Rectangle;
 import com.cryptroot.core.world.PositionComponent;
+import java.util.Objects;
 
 /**
  * An axis-aligned bounding box {@link Collider}, anchored to a live {@link PositionComponent}
@@ -35,7 +36,11 @@ public final class BoxCollider implements Collider {
    */
   public BoxCollider(
       PositionComponent anchor, float offsetX, float offsetY, float width, float height) {
-    this.anchor = anchor;
+    this.anchor = Objects.requireNonNull(anchor, "anchor must not be null");
+    if (width <= 0f || height <= 0f) {
+      throw new IllegalArgumentException(
+          "width and height must be positive, got " + width + "x" + height);
+    }
     this.offsetX = offsetX;
     this.offsetY = offsetY;
     this.width = width;

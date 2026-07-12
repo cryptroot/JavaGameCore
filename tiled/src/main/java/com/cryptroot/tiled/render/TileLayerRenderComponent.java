@@ -8,6 +8,7 @@ import com.cryptroot.core.world.RenderComponent;
 import com.cryptroot.tiled.io.GlobalTileId;
 import com.cryptroot.tiled.io.TileGeometry;
 import com.cryptroot.tiled.model.TileLayer;
+import java.util.Objects;
 
 /**
  * Draws a single orthogonal {@link TileLayer} through the core render pipeline.
@@ -55,6 +56,16 @@ public final class TileLayerRenderComponent implements RenderComponent {
       int mapTileHeight,
       TileAtlas atlas,
       RenderPass renderPass) {
+    Objects.requireNonNull(layer, "layer must not be null");
+    Objects.requireNonNull(gids, "gids must not be null");
+    Objects.requireNonNull(atlas, "atlas must not be null");
+    Objects.requireNonNull(renderPass, "renderPass must not be null");
+    if (mapWidth <= 0 || mapHeight <= 0) {
+      throw new IllegalArgumentException("mapWidth and mapHeight must be positive");
+    }
+    if (mapTileWidth <= 0 || mapTileHeight <= 0) {
+      throw new IllegalArgumentException("mapTileWidth and mapTileHeight must be positive");
+    }
     this.gids = gids;
     this.mapWidth = mapWidth;
     this.mapHeight = mapHeight;

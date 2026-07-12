@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
@@ -38,6 +39,8 @@ public final class EventBus {
    *     be needed.
    */
   public <T> DisposableConnection subscribe(Class<T> type, Consumer<T> listener) {
+    Objects.requireNonNull(type, "type must not be null");
+    Objects.requireNonNull(listener, "listener must not be null");
     subscriptions.computeIfAbsent(type, k -> new ArrayList<>()).add(listener);
     return () -> {
       List<Consumer<?>> list = subscriptions.get(type);
@@ -55,6 +58,7 @@ public final class EventBus {
    */
   @SuppressWarnings("unchecked")
   public <T> void publish(T event) {
+    Objects.requireNonNull(event, "event must not be null");
     List<Consumer<?>> list = subscriptions.get(event.getClass());
     if (list == null || list.isEmpty()) return;
     // Safe: subscribe() ensures the stored Consumer<T> was registered for exactly T.

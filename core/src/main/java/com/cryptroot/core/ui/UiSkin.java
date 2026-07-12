@@ -2,6 +2,7 @@ package com.cryptroot.core.ui;
 
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.NinePatch;
+import java.util.Objects;
 
 /**
  * Immutable bundle of shared rendering resources used by UI widgets.
@@ -20,4 +21,10 @@ import com.badlogic.gdx.graphics.g2d.NinePatch;
  *
  * <p>The record holds no native LibGDX resources of its own and does not need to be disposed.
  */
-public record UiSkin(NinePatch normalSlice, NinePatch selectedSlice, BitmapFont font) {}
+public record UiSkin(NinePatch normalSlice, NinePatch selectedSlice, BitmapFont font) {
+  public UiSkin {
+    Objects.requireNonNull(normalSlice, "normalSlice must not be null");
+    Objects.requireNonNull(selectedSlice, "selectedSlice must not be null");
+    Objects.requireNonNull(font, "font must not be null");
+  }
+}

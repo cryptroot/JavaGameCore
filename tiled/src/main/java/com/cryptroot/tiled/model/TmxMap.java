@@ -2,6 +2,7 @@ package com.cryptroot.tiled.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -48,6 +49,10 @@ public final class TmxMap {
       List<TmxTileset> tilesets,
       List<TmxLayer> layers,
       Properties properties) {
+    Objects.requireNonNull(orientation, "orientation must not be null");
+    Objects.requireNonNull(renderOrder, "renderOrder must not be null");
+    Objects.requireNonNull(tilesets, "tilesets must not be null");
+    Objects.requireNonNull(layers, "layers must not be null");
     this.version = version;
     this.tiledVersion = tiledVersion;
     this.orientation = orientation;

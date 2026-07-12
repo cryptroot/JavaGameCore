@@ -9,6 +9,7 @@ import com.badlogic.gdx.utils.viewport.Viewport;
 import com.cryptroot.core.event.Signal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * A vertically scrollable list of text items, clipped to its declared bounds.
@@ -95,6 +96,9 @@ public final class ScrollList extends CompositeWidget {
       float listW,
       float listH,
       List<String> items) {
+    Objects.requireNonNull(skin, "skin must not be null");
+    Objects.requireNonNull(pixel, "pixel must not be null");
+    Objects.requireNonNull(viewport, "viewport must not be null");
     this.skin = skin;
     this.pixel = pixel;
     this.listX = listX;
@@ -116,6 +120,7 @@ public final class ScrollList extends CompositeWidget {
    * TextLabel} list, and performs a full layout pass.
    */
   public void setItems(List<String> newItems) {
+    Objects.requireNonNull(newItems, "newItems must not be null");
     items = new ArrayList<>(newItems);
     selectedIndex = items.isEmpty() ? -1 : 0;
     scrollOffsetY = 0f;

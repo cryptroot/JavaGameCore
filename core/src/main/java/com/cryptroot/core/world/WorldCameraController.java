@@ -5,6 +5,7 @@ import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.viewport.Viewport;
+import java.util.Objects;
 
 /**
  * Encapsulates a panning {@link OrthographicCamera} for the game world and provides a reusable
@@ -51,6 +52,10 @@ public final class WorldCameraController {
    * @param viewport the shared FitViewport used for letterbox-aware unprojection
    */
   public WorldCameraController(float worldWidth, float worldHeight, Viewport viewport) {
+    Objects.requireNonNull(viewport, "viewport must not be null");
+    if (worldWidth <= 0f || worldHeight <= 0f) {
+      throw new IllegalArgumentException("world size must be positive");
+    }
     this.worldWidth = worldWidth;
     this.worldHeight = worldHeight;
     this.viewport = viewport;
@@ -79,6 +84,7 @@ public final class WorldCameraController {
    * letterboxing. The result is written into {@code out} and returned.
    */
   public Vector3 unproject(int screenX, int screenY, Vector3 out) {
+    Objects.requireNonNull(out, "out must not be null");
     out.set(screenX, screenY, 0f);
     camera.unproject(
         out,

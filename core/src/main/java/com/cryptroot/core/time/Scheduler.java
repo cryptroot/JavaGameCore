@@ -2,6 +2,7 @@ package com.cryptroot.core.time;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Ticks a set of {@link Sequence}s not bound to a world entity — e.g. a day/wave resolve loop that
@@ -15,6 +16,7 @@ public final class Scheduler {
 
   /** Registers {@code s} to be ticked; returns it for convenience. */
   public Sequence submit(Sequence s) {
+    Objects.requireNonNull(s, "s must not be null");
     active.add(s);
     return s;
   }

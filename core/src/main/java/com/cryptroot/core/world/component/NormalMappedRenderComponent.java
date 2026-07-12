@@ -7,6 +7,7 @@ import com.cryptroot.core.render.RenderPass;
 import com.cryptroot.core.world.PositionComponent;
 import com.cryptroot.core.world.RenderComponent;
 import com.cryptroot.core.world.UpdateComponent;
+import java.util.Objects;
 
 /**
  * Renders a unit using the normal-mapped lighting path ({@link
@@ -36,6 +37,7 @@ public final class NormalMappedRenderComponent
 
   public NormalMappedRenderComponent(
       NormalMappedDrawable instance, float initialX, float initialY) {
+    Objects.requireNonNull(instance, "instance must not be null");
     this.instance = instance;
     this.posX = initialX;
     this.posY = initialY;

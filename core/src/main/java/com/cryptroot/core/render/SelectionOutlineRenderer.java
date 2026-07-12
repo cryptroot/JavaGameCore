@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.viewport.Viewport;
+import java.util.Objects;
 
 /**
  * Renders a per-pixel white selection outline around any {@link OutlineSource} — Spine units,
@@ -113,6 +114,7 @@ public final class SelectionOutlineRenderer implements Disposable {
    * tracking the physical window.
    */
   public void resize(Viewport viewport) {
+    Objects.requireNonNull(viewport, "viewport must not be null");
     if (resolutionLocked) {
       return;
     }
@@ -148,7 +150,7 @@ public final class SelectionOutlineRenderer implements Disposable {
 
   /** Sets the outline style used by subsequent {@link #drawOutline} calls. */
   public void setStyle(OutlineStyle style) {
-    this.currentStyle = style;
+    this.currentStyle = Objects.requireNonNull(style, "style must not be null");
   }
 
   /** Returns the currently active outline style. */

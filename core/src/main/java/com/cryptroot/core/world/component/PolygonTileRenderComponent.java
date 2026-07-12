@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.cryptroot.core.render.RenderPass;
 import com.cryptroot.core.world.RenderComponent;
+import java.util.Objects;
 
 /**
  * Renders an isometric diamond tile grid that scrolls with the world camera.
@@ -57,6 +58,19 @@ public final class PolygonTileRenderComponent implements RenderComponent {
       float tileH,
       int gridHalf,
       OrthographicCamera camera) {
+    Objects.requireNonNull(pixel, "pixel must not be null");
+    Objects.requireNonNull(colorA, "colorA must not be null");
+    Objects.requireNonNull(colorB, "colorB must not be null");
+    Objects.requireNonNull(camera, "camera must not be null");
+    if (tileW <= 0f) {
+      throw new IllegalArgumentException("tileW must be positive: " + tileW);
+    }
+    if (tileH <= 0f) {
+      throw new IllegalArgumentException("tileH must be positive: " + tileH);
+    }
+    if (gridHalf < 0) {
+      throw new IllegalArgumentException("gridHalf must not be negative: " + gridHalf);
+    }
     this.colorA = new Color(colorA);
     this.colorB = new Color(colorB);
     this.tileW = tileW;

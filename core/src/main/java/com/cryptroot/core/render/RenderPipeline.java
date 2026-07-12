@@ -15,6 +15,7 @@ import com.cryptroot.core.render.system.WorldRenderSystem;
 import com.cryptroot.core.ui.UiLayer;
 import com.cryptroot.core.world.World;
 import java.util.Collection;
+import java.util.Objects;
 
 /**
  * Orchestrates the full per-frame render pipeline for a world-camera scene.
@@ -51,7 +52,7 @@ public final class RenderPipeline implements Disposable {
   private boolean sceneOutlineCaptured;
 
   public RenderPipeline(GameContext context) {
-    this.context = context;
+    this.context = Objects.requireNonNull(context, "context must not be null");
   }
 
   // -------------------------------------------------------------------------
@@ -123,6 +124,7 @@ public final class RenderPipeline implements Disposable {
    * @return {@code true} if an entity was hit
    */
   public boolean handleClick(World world, float worldX, float worldY) {
+    Objects.requireNonNull(world, "world must not be null");
     return clickSystem
         .handleClick(world, worldX, worldY)
         .map(

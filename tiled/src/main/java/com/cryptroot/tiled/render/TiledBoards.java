@@ -6,6 +6,7 @@ import com.cryptroot.tiled.io.TileDataCodec;
 import com.cryptroot.tiled.io.TileGeometry;
 import com.cryptroot.tiled.model.TileLayer;
 import com.cryptroot.tiled.model.TmxMap;
+import java.util.Objects;
 import java.util.function.IntPredicate;
 
 /**
@@ -32,6 +33,9 @@ public final class TiledBoards {
    *     bounds ({@code core.grid} convention: row 0 = bottom)
    */
   public static Board fromLayer(TmxMap map, TileLayer layer, IntPredicate blockedGid) {
+    Objects.requireNonNull(map, "map must not be null");
+    Objects.requireNonNull(layer, "layer must not be null");
+    Objects.requireNonNull(blockedGid, "blockedGid must not be null");
     int[] gids = TileDataCodec.decode(layer.data(), layer.width() * layer.height());
     int mapWidth = map.width();
     int mapHeight = map.height();

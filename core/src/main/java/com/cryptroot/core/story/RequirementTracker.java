@@ -2,6 +2,7 @@ package com.cryptroot.core.story;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Predicate;
 
 /**
@@ -24,6 +25,8 @@ public final class RequirementTracker<C> {
 
   /** Registers (or replaces) the predicate for {@code key}. */
   public RequirementTracker<C> register(String key, Predicate<C> predicate) {
+    Objects.requireNonNull(key, "key must not be null");
+    Objects.requireNonNull(predicate, "predicate must not be null");
     requirements.put(key, predicate);
     return this;
   }

@@ -6,6 +6,7 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
 import com.cryptroot.core.event.Signal;
+import java.util.Objects;
 
 /**
  * A horizontal drag-to-change-value slider.
@@ -69,6 +70,12 @@ public final class Slider extends BoundedWidget {
       float min,
       float max,
       float initial) {
+    Objects.requireNonNull(pixel, "pixel must not be null");
+    Objects.requireNonNull(font, "font must not be null");
+    if (max <= min) {
+      throw new IllegalArgumentException(
+          "max must be greater than min: min=" + min + ", max=" + max);
+    }
     this.pixel = pixel;
     this.trackX = trackX;
     this.trackY = trackY;

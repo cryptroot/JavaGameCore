@@ -4,6 +4,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.cryptroot.core.dialogue.InteractionPrompt;
+import java.util.Objects;
 
 /**
  * A non-interactive, toggleable text hint backing an {@link InteractionPrompt}.
@@ -28,12 +29,14 @@ public final class LabelInteractionPrompt implements UiWidget, InteractionPrompt
    */
   public LabelInteractionPrompt(
       BitmapFont font, float centerX, float baselineY, float regionWidth) {
+    Objects.requireNonNull(font, "font must not be null");
     this.label =
         new TextLabel(font, "", centerX, baselineY).setAlign(TextLabel.HAlign.CENTER, regionWidth);
   }
 
   /** Sets the hint colour. Returns {@code this} for chaining. */
   public LabelInteractionPrompt setColor(Color color) {
+    Objects.requireNonNull(color, "color must not be null");
     label.setColor(color);
     return this;
   }
@@ -42,6 +45,7 @@ public final class LabelInteractionPrompt implements UiWidget, InteractionPrompt
 
   @Override
   public void show(String text) {
+    Objects.requireNonNull(text, "text must not be null");
     label.setText(text);
     label.layout();
     visible = true;

@@ -4,6 +4,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
+import java.util.Objects;
 
 /**
  * A horizontal progress bar widget.
@@ -61,6 +62,8 @@ public final class ProgressBar extends CompositeWidget {
    */
   public ProgressBar(
       Texture pixel, BitmapFont labelFont, float x, float y, float w, float h, float progress) {
+    Objects.requireNonNull(pixel, "pixel must not be null");
+    Objects.requireNonNull(labelFont, "labelFont must not be null");
     this.labelFont = labelFont;
     this.x = x;
     this.y = y;

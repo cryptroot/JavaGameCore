@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
 import com.cryptroot.core.event.Signal;
 import com.cryptroot.core.event.Signal0;
+import java.util.Objects;
 
 /**
  * A single-line text input field.
@@ -95,6 +96,9 @@ public final class InputField extends BoundedWidget implements Focusable {
    * @param placeholder grey hint text shown when the field is empty and unfocused
    */
   public InputField(UiSkin skin, Texture pixel, float x, float y, float width, String placeholder) {
+    Objects.requireNonNull(skin, "skin must not be null");
+    Objects.requireNonNull(pixel, "pixel must not be null");
+    Objects.requireNonNull(placeholder, "placeholder must not be null");
     this.skin = skin;
     this.pixel = pixel;
     this.x = x;
@@ -113,6 +117,7 @@ public final class InputField extends BoundedWidget implements Focusable {
 
   /** Replaces current text and places the cursor at the end. */
   public void setText(String newText) {
+    Objects.requireNonNull(newText, "newText must not be null");
     text.setLength(0);
     text.append(newText);
     cursorPos = text.length();

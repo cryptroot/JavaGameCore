@@ -4,6 +4,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
+import java.util.Objects;
 
 /**
  * A lightweight fill-track renderer shared by {@link Slider} and {@link ProgressBar}.
@@ -30,6 +31,9 @@ public final class FillTrack implements UiWidget {
    * @param fillColor colour for the filled portion
    */
   public FillTrack(Texture pixel, Color bgColor, Color fillColor) {
+    Objects.requireNonNull(pixel, "pixel must not be null");
+    Objects.requireNonNull(bgColor, "bgColor must not be null");
+    Objects.requireNonNull(fillColor, "fillColor must not be null");
     this.pixel = pixel;
     this.bgColor = bgColor;
     this.fillColor = fillColor;

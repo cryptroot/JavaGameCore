@@ -3,6 +3,7 @@ package com.cryptroot.core.ui;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
+import java.util.Objects;
 
 /**
  * Non-interactive widget that draws a {@link Texture} scaled to fill given bounds.
@@ -34,6 +35,7 @@ public final class TextureWidget implements UiWidget {
    * @param h draw height
    */
   public TextureWidget(Texture texture, float x, float y, float w, float h) {
+    Objects.requireNonNull(texture, "texture must not be null");
     this.texture = texture;
     this.x = x;
     this.y = y;
@@ -51,6 +53,7 @@ public final class TextureWidget implements UiWidget {
 
   /** Replaces the texture drawn by this widget. The old texture is not disposed. */
   public void setTexture(Texture texture) {
+    Objects.requireNonNull(texture, "texture must not be null");
     this.texture = texture;
   }
 

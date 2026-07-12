@@ -3,6 +3,7 @@ package com.cryptroot.core.ui;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.cryptroot.core.event.Signal0;
+import java.util.Objects;
 
 /**
  * A bordered text button that implements the full {@link UiWidget} contract.
@@ -80,6 +81,8 @@ public class Button extends BoundedWidget {
    * is desired.
    */
   public Button(UiSkin skin, String label, float textX, float textY) {
+    Objects.requireNonNull(skin, "skin must not be null");
+    Objects.requireNonNull(label, "label must not be null");
     this.skin = skin;
     this.label = label;
     this.textX = textX;
@@ -111,6 +114,7 @@ public class Button extends BoundedWidget {
    * }</pre>
    */
   public Button setLabelColour(Color colour) {
+    Objects.requireNonNull(colour, "colour must not be null");
     labelWidget.setColor(colour);
     return this;
   }
@@ -133,6 +137,8 @@ public class Button extends BoundedWidget {
    * baseline Y.
    */
   public static Button centered(UiSkin skin, String label, float textY) {
+    Objects.requireNonNull(skin, "skin must not be null");
+    Objects.requireNonNull(label, "label must not be null");
     return new Button(skin, label, textY, true);
   }
 

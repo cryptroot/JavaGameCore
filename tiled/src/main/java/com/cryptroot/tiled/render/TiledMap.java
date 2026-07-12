@@ -8,6 +8,7 @@ import com.cryptroot.tiled.model.TmxMap;
 import com.cryptroot.tiled.model.TmxObject;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * A loaded, render-ready Tiled map: the parsed {@link TmxMap model}, the {@link TileAtlas} of its
@@ -28,10 +29,13 @@ public final class TiledMap {
 
   /**
    * @param model the parsed map
-   * @param atlas the gid-to-region atlas
+   * @param atlas the gid-to-region atlas; may be {@code null} if {@code layerComponents} is empty
+   *     (e.g. a map used only for object-group spawning, not rendering)
    * @param layerComponents render components for the tile layers, in document order
    */
   public TiledMap(TmxMap model, TileAtlas atlas, List<TileLayerRenderComponent> layerComponents) {
+    Objects.requireNonNull(model, "model must not be null");
+    Objects.requireNonNull(layerComponents, "layerComponents must not be null");
     this.model = model;
     this.atlas = atlas;
     this.layerComponents = List.copyOf(layerComponents);
@@ -66,6 +70,7 @@ public final class TiledMap {
    * @return the entities created, one per tile layer, in document order
    */
   public List<WorldEntity> addTo(World world) {
+    Objects.requireNonNull(world, "world must not be null");
     List<WorldEntity> added = new ArrayList<>(layerComponents.size());
     for (TileLayerRenderComponent layer : layerComponents) {
       added.add(world.add(new WorldEntity().with(RenderComponent.class, layer)));
@@ -82,6 +87,8 @@ public final class TiledMap {
    * @return the entities spawned, in the order they were created
    */
   public List<WorldEntity> spawnObjects(World world, TmxObjectFactory factory) {
+    Objects.requireNonNull(world, "world must not be null");
+    Objects.requireNonNull(factory, "factory must not be null");
     List<WorldEntity> spawned = new ArrayList<>();
     for (ObjectGroup group : model.objectGroups()) {
       for (TmxObject object : group.objects()) {

@@ -15,6 +15,7 @@ import com.cryptroot.core.resources.ResourceManager;
 import com.cryptroot.core.resources.ResourcePath;
 import com.cryptroot.core.ui.UiSkin;
 import java.util.Locale;
+import java.util.Objects;
 
 /**
  * Central holder for all game assets: textures, atlases, fonts, nine-patch slices, and the three
@@ -87,10 +88,12 @@ public final class AssetRegistry implements Disposable {
    * @param classpathBase base path without locale/extension, e.g. {@code "assets/i18n/kennel"}
    */
   public void registerStrings(String classpathBase) {
+    Objects.requireNonNull(classpathBase, "classpathBase must not be null");
     localization.merge(classpathBase);
   }
 
   public BitmapFont font(FontSize size) {
+    Objects.requireNonNull(size, "size must not be null");
     return switch (size) {
       case HINT -> fontHint;
       case BODY -> fontBody;

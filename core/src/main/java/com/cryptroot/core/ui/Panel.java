@@ -4,6 +4,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
+import java.util.Objects;
 
 /**
  * A rectangular background panel that groups and visually contains child widgets.
@@ -93,6 +94,9 @@ public class Panel extends BoundedWidget {
       Color bgColor,
       Color borderColor,
       float borderThickness) {
+    Objects.requireNonNull(pixel, "pixel must not be null");
+    Objects.requireNonNull(bgColor, "bgColor must not be null");
+    Objects.requireNonNull(borderColor, "borderColor must not be null");
     this.x = x;
     this.y = y;
     this.w = w;
@@ -127,6 +131,7 @@ public class Panel extends BoundedWidget {
    * public API explicit.
    */
   public void addWidget(UiWidget widget) {
+    Objects.requireNonNull(widget, "widget must not be null");
     addChild(widget);
   }
 

@@ -3,6 +3,7 @@ package com.cryptroot.core.dialogue;
 import com.cryptroot.core.event.EventBus;
 import com.cryptroot.core.event.Signal;
 import com.cryptroot.core.event.Signal0;
+import java.util.Objects;
 
 /**
  * Pure-Java state machine that walks a {@link DialogueGraph}.
@@ -50,9 +51,9 @@ public final class DialogueRunner {
   public final Signal0 onEnded = new Signal0();
 
   public DialogueRunner(DialogueGraph graph, DialogueBlackboard blackboard, EventBus eventBus) {
-    this.graph = graph;
-    this.blackboard = blackboard;
-    this.eventBus = eventBus;
+    this.graph = Objects.requireNonNull(graph, "graph must not be null");
+    this.blackboard = Objects.requireNonNull(blackboard, "blackboard must not be null");
+    this.eventBus = Objects.requireNonNull(eventBus, "eventBus must not be null");
   }
 
   // -------------------------------------------------------------------------
@@ -76,6 +77,7 @@ public final class DialogueRunner {
    * array of enabled flags for the presentation layer.
    */
   public boolean[] enabledFlags(DialogueNode.Choice choice) {
+    Objects.requireNonNull(choice, "choice must not be null");
     boolean[] flags = new boolean[choice.options().size()];
     for (int i = 0; i < flags.length; i++) {
       flags[i] = choice.options().get(i).isEnabled(blackboard);
@@ -98,6 +100,10 @@ public final class DialogueRunner {
    * with future persistence).
    */
   public void resumeAt(String nodeId) {
+    Objects.requireNonNull(nodeId, "nodeId must not be null");
+    if (graph.node(nodeId) == null) {
+      throw new IllegalArgumentException("Unknown node id: " + nodeId);
+    }
     pendingAction = null;
     enter(nodeId);
   }
