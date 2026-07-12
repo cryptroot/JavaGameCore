@@ -34,6 +34,7 @@ Package prefixes: `com.cryptroot.core` (core), `com.cryptroot.tiled` (tiled).
 | World-space health/progress bar | `core.world.component.WorldHealthBarComponent` | entity-anchored, `FOREGROUND_WORLD`, green→red; distinct from screen-space `ui.ProgressBar` |
 | Hit-flash tint | `core.world.component.TintFlashRenderComponent` | decorator over any `RenderComponent`; `flash(color,dur)` |
 | Entity removal / despawn | `core.world.World` | `remove` (immediate), `queueRemove`+`flushRemovals` (deferred, safe mid-update), `onRemoved()` signal; pipeline flushes each frame |
+| Entity spawn during `update()` | `core.world.World` | `add` (immediate — outside the system loop only), `queueAdd`+`flushAdditions` (deferred, safe mid-update — e.g. a tower firing a bullet or a spawner creating an enemy from its own `update()`); pipeline flushes each frame |
 | Tile world→cell inverse | `tiled.io.TileGeometry` | `columnAt`, `rowAt`, `cellAt` |
 | Grid from a map | `tiled.render.TiledGrids.fromMap` | derive a `core.grid.Grid` from a `TmxMap` |
 | Object-layer → entity spawn | `tiled.render.TiledMap.spawnObjects` + `TmxObjectFactory` | factory turns each `TmxObject` into a `WorldEntity` |
@@ -65,7 +66,7 @@ still in `core`, not stubbed in your game code (`demo` or an external consumer).
 | `Transform.position` | `core.world.PositionComponent` (`x/y/moveTo`) — no hierarchy, no rotation/scale |
 | `SpriteRenderer` | `core.world.component.TextureRenderComponent` |
 | `SpriteRenderer.color` hit flash | `core.world.component.TintFlashRenderComponent` (`flash(color, dur)`) |
-| `Instantiate` / `Destroy` | `world.add(entity)` / `world.queueRemove(entity)` (+ `onRemoved()` signal) |
+| `Instantiate` / `Destroy` | `world.add(entity)` / `world.queueRemove(entity)` (+ `onRemoved()` signal); spawning from inside a system's `update()` (e.g. a projectile) uses `world.queueAdd(entity)` instead |
 | `GameManager.Instance` / `FindObjectOfType` | a field on your `GameContext` subclass, injected into screens |
 | `Camera.ScreenToWorldPoint` | `WorldCameraController.unproject(screenX, screenY)` |
 | `Input` (mouse/keys) | libGDX `InputProcessor`/`InputMultiplexer` (see `CaveDemoScreen`) |

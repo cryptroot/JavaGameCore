@@ -11,8 +11,13 @@ Put reusable, game-agnostic engine primitives here. See root [../CAPABILITIES.md
   systems. **Invariant: never structurally mutate the entity list while a system iterates it.**
   - Remove between frames (input handlers): `world.remove(e)`.
   - Remove during a system's `update()`: `world.queueRemove(e)`, applied by `flushRemovals()`.
-  - `RenderPipeline.update()` calls `flushRemovals()` at the **start** of each frame; if you drive
-    systems manually, you must call it yourself. `onRemoved()` fires per removed entity.
+  - Add between frames (input handlers): `world.add(e)`.
+  - Spawn during a system's `update()` (e.g. a tower firing a bullet, a spawner creating an enemy):
+    `world.queueAdd(e)`, applied by `flushAdditions()`. Both `add`/`queueAdd` return the entity for
+    fluent post-wiring (e.g. binding it back onto a component it carries).
+  - `RenderPipeline.update()` calls `flushAdditions()` then `flushRemovals()` at the **start** of
+    each frame; if you drive systems manually, you must call both yourself. `onRemoved()` fires per
+    removed entity.
 
 ## Frame / render
 - One update hook: `UpdateComponent.update(delta)`, ticked by `UpdateSystem`. No Unity-style
