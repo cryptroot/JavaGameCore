@@ -23,3 +23,10 @@ geometry/pathfinding belongs in `core` (`core.grid`, `core.path`), not here.
 - Textures are owned by the `core` `ResourceManager` that loaded the map — nothing to dispose here.
 - Tests parse fixtures under `src/test/resources/assets/test/` (e.g. `Embedded.tmx`); follow
   `EmbeddedMapTest`. Running them needs `jackson-dataformat-xml` resolvable in `~/.m2`.
+- **Fail fast by default**, matching `core`: null-check stored/dereferenced references with
+  `Objects.requireNonNull`, reject invalid values with `IllegalArgumentException` (see
+  `TmxColors`, `TileSliceMath`, `TileDataCodec`). Fail-soft only where already documented as
+  intentional (e.g. a missing table/resource returning empty instead of throwing) — otherwise
+  validate at the public API boundary rather than letting bad TMX data fail obscurely deep in
+  parsing/rendering.
+- Run `mvn spotless:apply` from the repo root after editing any Java file here.
