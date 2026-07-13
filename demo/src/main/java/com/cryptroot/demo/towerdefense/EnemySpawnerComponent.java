@@ -7,12 +7,16 @@ import com.badlogic.gdx.math.Vector2;
 import com.cryptroot.core.grid.Grid;
 import com.cryptroot.core.path.PathCostStrategy;
 import com.cryptroot.core.path.Pathfinder;
+import com.cryptroot.core.physics.BoxCollider;
+import com.cryptroot.core.physics.Collider;
 import com.cryptroot.core.render.RenderPass;
 import com.cryptroot.core.time.Cadence;
 import com.cryptroot.core.world.RenderComponent;
 import com.cryptroot.core.world.UpdateComponent;
 import com.cryptroot.core.world.World;
 import com.cryptroot.core.world.WorldEntity;
+import com.cryptroot.core.world.component.HealthComponent;
+import com.cryptroot.core.world.component.PathFollowerComponent;
 import com.cryptroot.core.world.component.TextureRenderComponent;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +26,10 @@ import java.util.Objects;
  * Game-specific enemy spawner: periodically drops an enemy at a random floor column on the bottom
  * row of the arena (never the dark-brown/black border — see {@link PlacementGrid}), pathfinding
  * around any placed towers to the nearest open floor column on the top row.
+ *
+ * <p>Each enemy also carries a {@link BoxCollider} matching its sprite bounds, so {@link
+ * com.cryptroot.core.physics.CollisionSystem} can detect a homing bullet touching it — see {@link
+ * TowerComponent}.
  */
 final class EnemySpawnerComponent implements UpdateComponent {
 
@@ -90,15 +98,22 @@ final class EnemySpawnerComponent implements UpdateComponent {
             enemySize,
             enemySize,
             RenderPass.WORLD);
-    EnemyComponent enemyComponent =
-        new EnemyComponent(world, render, waypoints, enemySpeed, enemyHp);
+    HealthComponent health = new HealthComponent(enemyHp);
+    PathFollowerComponent pathFollower = new PathFollowerComponent(render, waypoints, enemySpeed);
+    BoxCollider collider = new BoxCollider(render, 0f, 0f, enemySize, enemySize);
+
     // Spawns from inside this component's own update() while UpdateSystem iterates the live
     // entity list, so this must go through queueAdd rather than World.add.
     WorldEntity enemy =
         world.queueAdd(
             new WorldEntity()
                 .with(RenderComponent.class, render)
-                .with(EnemyComponent.class, enemyComponent));
-    enemyComponent.bind(enemy);
+                .with(HealthComponent.class, health)
+                .with(UpdateComponent.class, pathFollower)
+                .with(Collider.class, collider));
+    // Reaching the final waypoint (leaked through) and dying to damage both despawn the enemy;
+    // World.queueRemove collapses duplicate requests, so no extra guard is needed if both fire.
+    pathFollower.onCompleted().connect(() -> world.queueRemove(enemy));
+    health.onDeath().connect(() -> world.queueRemove(enemy));
   }
 }

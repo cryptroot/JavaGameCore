@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Disposable;
 import com.cryptroot.core.GameContext;
+import com.cryptroot.core.physics.CollisionSystem;
 import com.cryptroot.core.render.system.ClickSystem;
 import com.cryptroot.core.render.system.DialogueSystem;
 import com.cryptroot.core.render.system.HoverSystem;
@@ -25,6 +26,7 @@ import java.util.Objects;
  * <ol>
  *   <li>{@link UpdateSystem}: tick all {@code UpdateComponent}s
  *   <li>{@link HoverSystem}: update hover state, fire enter/exit signals
+ *   <li>{@link CollisionSystem}: update collider overlap state, fire enter/exit signals
  *   <li>{@link OutlineRenderSystem}: capture hover outline to FBO (before batch.begin)
  *   <li>{@link WorldRenderSystem#draw}: BACKGROUND + WORLD (Y-sorted) + outline blit
  *   <li>{@link NormalMappedRenderSystem}: NM pass (if entities present)
@@ -41,6 +43,7 @@ public final class RenderPipeline implements Disposable {
   private final HoverSystem hoverSystem = new HoverSystem();
   private final ClickSystem clickSystem = new ClickSystem();
   private final DialogueSystem dialogueSystem = new DialogueSystem();
+  private final CollisionSystem collisionSystem = new CollisionSystem();
   private final OutlineRenderSystem outlineSystem = new OutlineRenderSystem();
   private final WorldRenderSystem worldRenderSystem = new WorldRenderSystem();
   private final NormalMappedRenderSystem nmRenderSystem = new NormalMappedRenderSystem();
@@ -80,6 +83,19 @@ public final class RenderPipeline implements Disposable {
    */
   public void processHover(World world, float worldX, float worldY, float delta) {
     hoverSystem.process(world, worldX, worldY, delta);
+  }
+
+  /**
+   * Re-scans every {@link com.cryptroot.core.physics.Collider}-carrying entity in {@code world} and
+   * fires {@link com.cryptroot.core.physics.CollisionListener} enter/exit transitions.
+   *
+   * <p>Cheap to call unconditionally even when no entity carries a {@link
+   * com.cryptroot.core.physics.Collider} (a single filtering pass over {@link World#entities()}) —
+   * a game opts in simply by attaching {@link com.cryptroot.core.physics.Collider} components, with
+   * no separate wiring.
+   */
+  public void processCollisions(World world) {
+    collisionSystem.update(world);
   }
 
   /**
@@ -193,6 +209,7 @@ public final class RenderPipeline implements Disposable {
   /** Resets hover and outline state. Call from screen {@code hide()}. */
   public void reset() {
     hoverSystem.reset();
+    collisionSystem.reset();
     sceneOutlineCaptured = false;
   }
 

@@ -4,6 +4,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.math.Vector3;
 import com.cryptroot.core.GameContext;
 import com.cryptroot.core.render.RenderPipeline;
+import com.cryptroot.core.time.TimeScale;
 import com.cryptroot.core.world.World;
 import com.cryptroot.core.world.WorldCameraController;
 
@@ -29,6 +30,13 @@ public abstract class BaseGameScreen<C extends GameContext> extends BaseScreen<C
   protected final World world;
   protected final RenderPipeline pipeline;
 
+  /**
+   * Pause/speed-up control applied to the frame delta before it reaches {@link #world}. Defaults to
+   * a 1x, unpaused identity — call its setters (typically from a key binding or a pause button) to
+   * change playback speed.
+   */
+  protected final TimeScale timeScale = new TimeScale();
+
   protected BaseGameScreen(C context) {
     super(context);
     worldCamera =
@@ -47,9 +55,11 @@ public abstract class BaseGameScreen<C extends GameContext> extends BaseScreen<C
 
   @Override
   protected final void onRender(float delta) {
+    float scaledDelta = timeScale.apply(delta);
     Vector3 mouse = worldCamera.unproject(Gdx.input.getX(), Gdx.input.getY());
-    pipeline.update(world, delta);
-    pipeline.processHover(world, mouse.x, mouse.y, delta);
+    pipeline.update(world, scaledDelta);
+    pipeline.processHover(world, mouse.x, mouse.y, scaledDelta);
+    pipeline.processCollisions(world);
     pipeline.render(world, worldCamera.camera(), uiLayer);
   }
 
