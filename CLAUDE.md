@@ -10,11 +10,12 @@ framework and the source of truth.** Game code consumes them; it does not re-imp
 > that talks about "game code" applies there exactly as it does to `demo`.
 
 > ⚠️ **The #1 rule — do not re-invent the framework.** Before writing any grid, pathfinding,
-> timer, tween, health-bar, entity, render, UI, event, camera, or asset code in your game
-> (whether that's the bundled `demo` sample or an external project consuming `core`/`tiled`),
-> assume the primitive already exists and go find it (start with
-> [CAPABILITIES.md](CAPABILITIES.md)). Only genuinely game-specific logic belongs in game code.
-> A stubbed/simplified re-implementation of an existing core feature is a defect, not a shortcut.
+> timer, tween, health/damage, movement, projectile, collision, audio, health-bar, entity, render,
+> UI, event, camera, or asset code in your game (whether that's the bundled `demo` sample or an
+> external project consuming `core`/`tiled`), assume the primitive already exists and go find it
+> (start with [CAPABILITIES.md](CAPABILITIES.md)). Only genuinely game-specific logic belongs in
+> game code. A stubbed/simplified re-implementation of an existing core feature is a defect, not a
+> shortcut.
 
 ## Modules (Maven reactor, Java 21, libGDX 1.14.0 / LWJGL3, Jackson, JUnit 5)
 ```
@@ -37,6 +38,15 @@ Worked examples:
   treasure rows, the troop/trap/boulder cost numbers → **the game**.
 - A countdown/attack-cadence timer → **core**. "Enemies attack once per second" → **the game**.
 - A world-space health bar widget → **core**. "only show it during the Resolve phase" → **the game**.
+- Generic hit-point bookkeeping (`damage`/`heal`/`isAlive`/a fires-once death signal), following a
+  list of waypoints, homing in on a moving target, "find the nearest thing in range" → **core**
+  (`HealthComponent`, `PathFollowerComponent`, `HomingProjectileComponent`, `WorldQueries.nearest`).
+  The HP numbers, which waypoints, which target, and what "impact" actually does → **the game**.
+- Detecting when two shapes start/stop overlapping (`core.physics.CollisionSystem`) → **core**.
+  What happens when a bullet's shape touches an enemy's → **the game**.
+- Pausing/speeding up the game (`core.time.TimeScale`), a `Sound`/`Music` cache with volume control
+  (`core.audio.AudioManager`) → **core**. Which key toggles pause, which sound plays on a hit →
+  **the game**.
 
 ## Golden rules
 - **No static singletons.** There is no `GameManager.Instance`. Shared services live on a
