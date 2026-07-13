@@ -93,6 +93,57 @@ public final class HoverableSpriteComponent
     this(region, x, y, renderPass, DEFAULT_HOVER_TINT);
   }
 
+  /**
+   * @param region the sprite frame
+   * @param x bottom-left position in world (scene) space
+   * @param y bottom-left position in world (scene) space
+   * @param w draw width in world units, independent of the region's native pixel size
+   * @param h draw height in world units, independent of the region's native pixel size
+   * @param renderPass the pass this sprite draws in (UI, WORLD, BACKGROUND, …)
+   * @param hoverTint the colour applied to the sprite when the cursor is over it (dark tint)
+   */
+  public HoverableSpriteComponent(
+      TextureRegion region,
+      float x,
+      float y,
+      float w,
+      float h,
+      RenderPass renderPass,
+      Color hoverTint) {
+    Objects.requireNonNull(region, "region must not be null");
+    Objects.requireNonNull(renderPass, "renderPass must not be null");
+    Objects.requireNonNull(hoverTint, "hoverTint must not be null");
+    if (w <= 0f) {
+      throw new IllegalArgumentException("w must be positive: " + w);
+    }
+    if (h <= 0f) {
+      throw new IllegalArgumentException("h must be positive: " + h);
+    }
+    this.region = region;
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.h = h;
+    this.renderPass = renderPass;
+    this.hoverTint = hoverTint;
+
+    onHoverEnter.connect(() -> hovered = true);
+    onHoverExit.connect(() -> hovered = false);
+  }
+
+  /**
+   * @param region the sprite frame
+   * @param x bottom-left position in world (scene) space
+   * @param y bottom-left position in world (scene) space
+   * @param w draw width in world units, independent of the region's native pixel size
+   * @param h draw height in world units, independent of the region's native pixel size
+   * @param renderPass the pass this sprite draws in (UI, WORLD, BACKGROUND, …)
+   */
+  public HoverableSpriteComponent(
+      TextureRegion region, float x, float y, float w, float h, RenderPass renderPass) {
+    this(region, x, y, w, h, renderPass, DEFAULT_HOVER_TINT);
+  }
+
   // -------------------------------------------------------------------------
   // RenderComponent
   // -------------------------------------------------------------------------

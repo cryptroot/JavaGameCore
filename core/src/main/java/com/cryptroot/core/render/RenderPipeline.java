@@ -62,11 +62,12 @@ public final class RenderPipeline implements Disposable {
   /**
    * Ticks all {@code UpdateComponent}s in the world.
    *
-   * <p>Applies any {@link World#queueRemove queued} entity removals first, at the start of the
-   * frame while no system is iterating, so components may safely queue their own removal during
-   * {@code update()}.
+   * <p>Applies any {@link World#queueAdd queued} entity additions and {@link World#queueRemove
+   * queued} removals first, at the start of the frame while no system is iterating, so components
+   * may safely spawn or remove entities during {@code update()}.
    */
   public void update(World world, float delta) {
+    world.flushAdditions();
     world.flushRemovals();
     updateSystem.update(world, delta);
   }

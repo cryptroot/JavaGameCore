@@ -15,7 +15,7 @@ Package prefixes: `com.cryptroot.core` (core), `com.cryptroot.tiled` (tiled).
 | UI toolkit (~40 widgets, screen-space) | `core.ui.*` | `Button`, `TextLabel`, `Panel`, `ProgressBar`, `Slider`, `Dropdown`, `ScrollList`, `TabbedPanel`, `UiLayer` (z-order + focus), … |
 | Events | `core.event.EventBus`, `Signal<T>`, `Signal0` | typed pub/sub + multicast delegates |
 | Camera pan/zoom + unproject | `core.world.WorldCameraController` | `unproject(x,y)`, drag/scroll adapters |
-| Assets / textures | `core.AssetRegistry`, `core.resources.ResourceManager` | fonts, skin, texture/atlas cache, 1×1 `getPixelTexture()` |
+| Assets / textures | `core.AssetRegistry`, `core.resources.ResourceManager` | fonts, skin, texture/atlas cache, 1×1 `getPixelTexture()`; `getOrCreateTexture(key,factory)` caches any caller-synthesised texture (creation stays out of the manager) |
 | Dialogue / story / i18n | `core.dialogue.*`, `core.story.*`, `core.i18n.*` | branching dialogue, quest state, localized strings |
 | TMX parse + render (orthogonal) | `tiled.io.TmxParser`, `tiled.render.TiledMapLoader`, `TiledMap` | CSV/base64+gzip/zlib; layers render in BACKGROUND via `TiledMap.addTo(world)` |
 | Tile grid→world math | `tiled.io.TileGeometry` | `worldX/worldY/index` |
@@ -34,6 +34,7 @@ Package prefixes: `com.cryptroot.core` (core), `com.cryptroot.tiled` (tiled).
 | World-space health/progress bar | `core.world.component.WorldHealthBarComponent` | entity-anchored, `FOREGROUND_WORLD`, green→red; distinct from screen-space `ui.ProgressBar` |
 | Hit-flash tint | `core.world.component.TintFlashRenderComponent` | decorator over any `RenderComponent`; `flash(color,dur)` |
 | Entity removal / despawn | `core.world.World` | `remove` (immediate), `queueRemove`+`flushRemovals` (deferred, safe mid-update), `onRemoved()` signal; pipeline flushes each frame |
+| Entity spawn during `update()` | `core.world.World` | `add` (immediate — outside the system loop only), `queueAdd`+`flushAdditions` (deferred, safe mid-update — e.g. a tower firing a bullet or a spawner creating an enemy from its own `update()`); pipeline flushes each frame |
 | Tile world→cell inverse | `tiled.io.TileGeometry` | `columnAt`, `rowAt`, `cellAt` |
 | Grid from a map | `tiled.render.TiledGrids.fromMap` | derive a `core.grid.Grid` from a `TmxMap` |
 | Object-layer → entity spawn | `tiled.render.TiledMap.spawnObjects` + `TmxObjectFactory` | factory turns each `TmxObject` into a `WorldEntity` |
@@ -42,6 +43,9 @@ Package prefixes: `com.cryptroot.core` (core), `com.cryptroot.tiled` (tiled).
 | Box (AABB) collider | `core.physics.BoxCollider` | anchors to a live `PositionComponent` + offset/size — never owns/duplicates position (mirrors `WorldHealthBarComponent`'s anchor pattern) |
 | Collider vs. grid/tile-map blocking | `core.physics.GridCollisions.isBlocked(Collider,Grid,Board)` | reuses `core.path.Board` (the same abstraction pathfinding uses) for "which cells are blocked"; out-of-grid always counts as blocked |
 | Tile layer → `Board` bridge | `tiled.render.TiledBoards.fromLayer(TmxMap,TileLayer,IntPredicate)` | decodes gids once, flips Tiled's top-down row into `core.grid`'s bottom-up convention, strips flip-flags via `GlobalTileId.id`; the blocked-gid predicate stays game-specific |
+| Tinted / toggleable texture quad | `core.world.component.TextureRenderComponent` | `setTint(Color)` (default opaque white) + `setVisible(boolean)` (default true) — a translucent placement ghost or a hide-when-off-grid overlay needs no decorator |
+| Shape textures (circle/ring, filled or outline) | `core.render.ShapeTextureFactory` | rasterises a solid-colour `ShapeMask` to a cached `Texture` via `ResourceManager.getOrCreateTexture`; `ring()`/`filledCircle()` helpers + generic `shape(key,w,h,color,mask)`; use the 1×1 pixel for rectangles |
+| Hoverable sprite at an explicit draw size | `core.world.component.HoverableSpriteComponent` | new `(region,x,y,w,h,renderPass[,hoverTint])` ctors for when the draw size must differ from the region's native pixel size (the original native-size ctors are unchanged) |
 
 ## Engine-parity backlog (with Unity) — deliberately NOT built
 These are not needed by the current game (it uses tile-occupancy + distance checks, static
@@ -65,7 +69,7 @@ still in `core`, not stubbed in your game code (`demo` or an external consumer).
 | `Transform.position` | `core.world.PositionComponent` (`x/y/moveTo`) — no hierarchy, no rotation/scale |
 | `SpriteRenderer` | `core.world.component.TextureRenderComponent` |
 | `SpriteRenderer.color` hit flash | `core.world.component.TintFlashRenderComponent` (`flash(color, dur)`) |
-| `Instantiate` / `Destroy` | `world.add(entity)` / `world.queueRemove(entity)` (+ `onRemoved()` signal) |
+| `Instantiate` / `Destroy` | `world.add(entity)` / `world.queueRemove(entity)` (+ `onRemoved()` signal); spawning from inside a system's `update()` (e.g. a projectile) uses `world.queueAdd(entity)` instead |
 | `GameManager.Instance` / `FindObjectOfType` | a field on your `GameContext` subclass, injected into screens |
 | `Camera.ScreenToWorldPoint` | `WorldCameraController.unproject(screenX, screenY)` |
 | `Input` (mouse/keys) | libGDX `InputProcessor`/`InputMultiplexer` (see `CaveDemoScreen`) |

@@ -10,6 +10,7 @@ import com.badlogic.gdx.utils.Disposable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 /**
  * Centralised texture cache that owns the lifecycle of every {@link Texture} loaded through it.
@@ -175,6 +176,30 @@ public final class ResourceManager implements Disposable {
    */
   public Texture getPixelTexture() {
     return pixelTexture;
+  }
+
+  /**
+   * Returns the cached texture for {@code key}, creating it via {@code factory} on first request
+   * and owning it thereafter (disposed in {@link #dispose()}).
+   *
+   * <p>Unlike {@link #createTexture}, this manager has no knowledge of how the texture is produced:
+   * the {@code factory} performs all creation — a CPU-rasterised {@link
+   * com.badlogic.gdx.graphics.Pixmap} shape (see {@code core.render.ShapeTextureFactory}), a
+   * render-to-texture result, and so on. The manager only owns caching and disposal, keeping
+   * texture <em>creation</em> concerns out of the cache.
+   *
+   * <p>{@code key} shares the same namespace as the classpath keys used by {@link #createTexture},
+   * so synthesised-texture callers must use a distinct, collision-proof prefix (e.g. {@code
+   * "shape:ring:64:2:..."}) rather than a string that could also be a real classpath.
+   *
+   * @param key cache key, also the reuse identity across calls
+   * @param factory creates the texture on first request; not invoked again once cached
+   * @return the cached-or-newly-created {@link Texture}
+   */
+  public Texture getOrCreateTexture(String key, Supplier<Texture> factory) {
+    Objects.requireNonNull(key, "key must not be null");
+    Objects.requireNonNull(factory, "factory must not be null");
+    return textureCache.computeIfAbsent(key, k -> factory.get());
   }
 
   // -------------------------------------------------------------------------

@@ -25,20 +25,40 @@ public final class World {
   /** Entities queued for deferred removal; applied by {@link #flushRemovals()}. */
   private final List<WorldEntity> pendingRemoval = new ArrayList<>();
 
+  /** Entities queued for deferred addition; applied by {@link #flushAdditions()}. */
+  private final List<WorldEntity> pendingAddition = new ArrayList<>();
+
   /** Fires once per entity actually removed (immediate or flushed). */
   private final Signal<WorldEntity> onRemoved = new Signal<>();
 
   /**
-   * Adds {@code entity} to this world and returns it for fluent post-wiring:
+   * Adds {@code entity} to this world immediately and returns it for fluent post-wiring:
    *
    * <pre>{@code
    * WorldEntity e = world.add(new WorldEntity()
    *     .with(SpineRenderComponent.class, spineComp));
    * }</pre>
+   *
+   * <p>Safe only <em>outside</em> the per-frame system loop (e.g. from input handlers or between
+   * frames). To spawn an entity from inside a system's {@code update()} — while the live {@link
+   * #entities()} view is being iterated, such as a tower firing a bullet or a spawner creating an
+   * enemy — use {@link #queueAdd} instead.
    */
   public WorldEntity add(WorldEntity entity) {
     Objects.requireNonNull(entity, "entity must not be null");
     entities.add(entity);
+    return entity;
+  }
+
+  /**
+   * Queues {@code entity} for addition on the next {@link #flushAdditions()} and returns it for
+   * fluent post-wiring (e.g. binding the entity back onto a component it carries). Safe to call
+   * while systems iterate {@link #entities()} (e.g. a tower firing a bullet, or a spawner creating
+   * an enemy, from inside its own {@code update()}).
+   */
+  public WorldEntity queueAdd(WorldEntity entity) {
+    Objects.requireNonNull(entity, "entity must not be null");
+    pendingAddition.add(entity);
     return entity;
   }
 
@@ -107,6 +127,18 @@ public final class World {
     pendingRemoval.clear();
   }
 
+  /**
+   * Applies all queued additions in the order they were queued. Call at a point where no system is
+   * iterating the entity list — {@link com.cryptroot.core.render.RenderPipeline#update} does this
+   * at the start of each frame, so entities queued during one frame's updates become visible to
+   * systems starting the next frame.
+   */
+  public void flushAdditions() {
+    if (pendingAddition.isEmpty()) return;
+    entities.addAll(pendingAddition);
+    pendingAddition.clear();
+  }
+
   /** Despawn signal: fires with each entity as it is removed. */
   public Signal<WorldEntity> onRemoved() {
     return onRemoved;
@@ -118,10 +150,11 @@ public final class World {
    * com.cryptroot.core.render.system.HoverSystem#reset()} separately.
    *
    * <p>Does not fire {@link #onRemoved()} (bulk teardown, not per-entity despawn) and discards any
-   * pending queued removals.
+   * pending queued removals or additions.
    */
   public void clear() {
     entities.clear();
     pendingRemoval.clear();
+    pendingAddition.clear();
   }
 }
