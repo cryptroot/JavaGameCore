@@ -10,8 +10,8 @@ Package prefixes: `com.cryptroot.core` (core), `com.cryptroot.tiled` (tiled).
 |---|---|---|
 | Entity container / ECS-lite | `core.world.World`, `WorldEntity`, `EntityComponent` | `with(Class,comp)`/`get`/`has`; one component per interface; auto-registers under sub-interfaces |
 | Components | `core.world.*` + `core.world.component.*` | Position, Render, Bounds, Clickable, Update, Triggerable, Tag, DialogueSpeaker, LightSource; defaults incl. `TextureRenderComponent`, `HoverableSpriteComponent` |
-| Frame pipeline | `core.render.RenderPipeline`, `core.render.system.*` | `update → processHover → render`; passes `BACKGROUND→WORLD→NORMAL_MAPPED→FOREGROUND_WORLD→UI`; WORLD is Y-sorted by `sortKey()` |
-| Screens / app loop | `core.screen.BaseScreen`, `BaseGameScreen`, `core.GameContext` | libGDX `Screen`; context owns camera/viewport/batch/eventBus/assets |
+| Frame pipeline | `core.render.RenderPipeline`, `core.render.system.*` | `update → processHover → processCollisions → render`; passes `BACKGROUND→WORLD→NORMAL_MAPPED→FOREGROUND_WORLD→UI`; WORLD is Y-sorted by `sortKey()` |
+| Screens / app loop | `core.screen.BaseScreen`, `BaseGameScreen`, `core.GameContext` | libGDX `Screen`; context owns camera/viewport/batch/eventBus/assets/audio; `BaseGameScreen` also owns a per-screen `timeScale` |
 | UI toolkit (~40 widgets, screen-space) | `core.ui.*` | `Button`, `TextLabel`, `Panel`, `ProgressBar`, `Slider`, `Dropdown`, `ScrollList`, `TabbedPanel`, `UiLayer` (z-order + focus), … |
 | Events | `core.event.EventBus`, `Signal<T>`, `Signal0` | typed pub/sub + multicast delegates |
 | Camera pan/zoom + unproject | `core.world.WorldCameraController` | `unproject(x,y)`, drag/scroll adapters |
@@ -46,20 +46,22 @@ Package prefixes: `com.cryptroot.core` (core), `com.cryptroot.tiled` (tiled).
 | Tinted / toggleable texture quad | `core.world.component.TextureRenderComponent` | `setTint(Color)` (default opaque white) + `setVisible(boolean)` (default true) — a translucent placement ghost or a hide-when-off-grid overlay needs no decorator |
 | Shape textures (circle/ring, filled or outline) | `core.render.ShapeTextureFactory` | rasterises a solid-colour `ShapeMask` to a cached `Texture` via `ResourceManager.getOrCreateTexture`; `ring()`/`filledCircle()` helpers + generic `shape(key,w,h,color,mask)`; use the 1×1 pixel for rectangles |
 | Hoverable sprite at an explicit draw size | `core.world.component.HoverableSpriteComponent` | new `(region,x,y,w,h,renderPass[,hoverTint])` ctors for when the draw size must differ from the region's native pixel size (the original native-size ctors are unchanged) |
+| Generic hit-point tracker | `core.world.component.HealthComponent` | `damage(int)`/`heal(int)` (clamped to `[0,maxHp]`, negative amounts rejected), `isAlive()`, `fraction()` (feeds `WorldHealthBarComponent.setFraction`), `Signal<HealthComponent> onChanged()`, `Signal0 onDeath()` (fires exactly once) — pure data/logic, not a `RenderComponent`/`UpdateComponent` |
+| Nearest-entity-in-range query | `core.world.WorldQueries.nearest(world,x,y,range,componentType,filter)` | the generic form of a tower/spell/AI "find nearest target" linear scan; ties resolve to entity iteration order |
+| Waypoint path-following movement | `core.world.component.PathFollowerComponent` | `UpdateComponent`; follows a fixed `List<Vector2>` via `core.time.Motion.moveTowards`, `Signal0 onCompleted()` fires once at the final waypoint; does not replan — construct a new instance if the route changes mid-flight |
+| Homing projectile | `core.world.component.HomingProjectileComponent` | `UpdateComponent`; homes to a target `WorldEntity`'s `PositionComponent`, takes a `Predicate<WorldEntity> isTargetValid` + `Consumer<WorldEntity> onImpact`, self-despawns via `bind(WorldEntity)` (same pattern as other self-despawning game components) |
+| Pause / speed-up | `core.time.TimeScale` | owned per-screen by `core.screen.BaseGameScreen` (`protected final timeScale` field); `apply(rawDelta)` is applied to the world pipeline's delta each frame; `setScale`/`setPaused`/`togglePause`; defaults to a 1x/unpaused no-op |
+| Automatic entity-vs-entity collision system | `core.physics.CollisionSystem` + `core.physics.CollisionListener` | the collision equivalent of `HoverSystem`: re-scans every `Collider`-carrying entity each frame, fires `onCollisionEnter`/`onCollisionExit` (`Signal<WorldEntity>`) on transitions; O(n²) pairwise, wired unconditionally into `RenderPipeline.processCollisions`/`BaseGameScreen` (negligible cost with zero `Collider`s present — opt in just by attaching one); demo's tower-defense bullets/enemies use it for shape-accurate impact (see `demo.towerdefense.TowerComponent`) |
+| Sound/music manager | `core.audio.AudioManager` | mirrors `ResourceManager`'s `getOrCreate*`-by-classpath cache/dispose pattern for `Sound`/`Music`; `loadSound`/`playSound`/`loadMusic`/`playMusic`/`stopMusic`; master/sfx/music volume (`setMasterVolume` etc., fail-soft clamped to `[0,1]` via `clampVolume`/`combinedVolume`); owned by `GameContext.audio()`, disposed alongside `assets` |
 
 ## Engine-parity backlog (with Unity) — deliberately NOT built
-These are not needed by the current game (it uses tile-occupancy + distance checks, static
-sprites, and no audio). Build the reusable core primitive **only when a game first needs it** —
-still in `core`, not stubbed in your game code (`demo` or an external consumer).
-- **Per-frame collision system / trigger volumes** (auto-checking overlaps between entities every
-  frame with enter/exit signals, the collision equivalent of `HoverSystem`). `core.physics.Collider`
-  / `BoxCollider` / `GridCollisions` now provide the shape and grid-blocking primitives; games still
-  call these manually (e.g. from an `UpdateComponent`). Build the automatic system only when a game
-  first needs entity-vs-entity collision. → future `core.physics` addition, not a new package.
-- **Audio manager** (`Sound`/`Music` wrapper). None in core. → future `core.audio`.
+These are not needed by the current game (it uses tile-occupancy + distance checks). Build the
+reusable core primitive **only when a game first needs it** — still in `core`, not stubbed in your
+game code (`demo` or an external consumer).
 - **Action-map / multi-button / gamepad input.** Only left-click, hover, drag-pan, scroll-zoom and
   UI focus keys exist; raw input is libGDX `InputProcessor`/`InputMultiplexer`. → future `core.input`.
 - **Save/load persistence.** In-memory only.
+
 
 ## Unity → Java concept map (hypothetical)
 | Unity | Java framework |

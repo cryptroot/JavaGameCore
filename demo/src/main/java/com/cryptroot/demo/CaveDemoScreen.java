@@ -26,7 +26,8 @@ import java.util.List;
  * Demo screen that loads {@code Cave.tmx} and renders it through the core world pipeline, with a
  * simple tower-defense mini-game layered on top: click anywhere on the map to place a tower (a
  * translucent ghost previews the landing cell first), and towers shoot enemies that spawn on the
- * central light-brown floor lane at the bottom of the map and path toward the top.
+ * central light-brown floor lane at the bottom of the map and path toward the top. Space toggles
+ * pause; 1/2 set normal/double speed (see {@link #timeScale}).
  *
  * <p>The map's tile layers are added to the world in the {@code BACKGROUND} pass, so they are drawn
  * in document order by the core render pipeline. The world camera is centred by {@link
@@ -105,8 +106,36 @@ public final class CaveDemoScreen extends BaseGameScreen<DemoGameContext> {
 
     InputMultiplexer input =
         new InputMultiplexer(
-            towerPlacementAdapter(), worldCamera.dragAdapter(), worldCamera.scrollAdapter());
+            timeControlAdapter(),
+            towerPlacementAdapter(),
+            worldCamera.dragAdapter(),
+            worldCamera.scrollAdapter());
     Gdx.input.setInputProcessor(input);
+  }
+
+  /**
+   * Handles Space (pause toggle) and 1/2 (normal/double speed) via the inherited {@link
+   * #timeScale}.
+   */
+  private InputAdapter timeControlAdapter() {
+    return new InputAdapter() {
+      @Override
+      public boolean keyDown(int keycode) {
+        switch (keycode) {
+          case Input.Keys.SPACE:
+            timeScale.togglePause();
+            return true;
+          case Input.Keys.NUM_1:
+            timeScale.setScale(1f);
+            return true;
+          case Input.Keys.NUM_2:
+            timeScale.setScale(2f);
+            return true;
+          default:
+            return false;
+        }
+      }
+    };
   }
 
   /**
