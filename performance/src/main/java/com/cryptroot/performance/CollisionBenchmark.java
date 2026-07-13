@@ -2,23 +2,26 @@ package com.cryptroot.performance;
 
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
+import com.cryptroot.core.concurrent.WorkerPool;
+import com.cryptroot.core.physics.CollisionSystem;
 import com.cryptroot.core.world.PositionComponent;
 import com.cryptroot.core.world.World;
 import com.cryptroot.core.world.WorldEntity;
-import com.cryptroot.performance.concurrent.WorkerPool;
-import com.cryptroot.performance.physics.ParallelBroadPhase;
 import com.cryptroot.performance.physics.RandomColliderField;
 import java.util.List;
 import java.util.Random;
 
 /**
- * Headless (GL-free) benchmark: builds a large field of moving, colliding boxes and times
- * sequential vs. {@link ParallelBroadPhase} broad-phase detection at several entity counts.
+ * Headless (GL-free) benchmark: builds a large field of moving, colliding boxes and times {@link
+ * CollisionSystem} built with its sequential no-arg constructor vs. its {@link
+ * com.cryptroot.core.concurrent.WorkerPool}-backed constructor, at several entity counts.
  *
  * <p>Run with {@code mvn -pl performance -am exec:java
  * -Dexec.mainClass=com.cryptroot.performance.CollisionBenchmark}. This is a manual perf check, not
- * a correctness test (see {@code ParallelBroadPhaseTest} for that) — timings are
- * environment-dependent, so nothing here is asserted in CI.
+ * a correctness test (see {@code core.physics.CollisionSystemTest} for that) — timings are
+ * environment-dependent, so nothing here is asserted in CI. The smallest box count is deliberately
+ * below {@code CollisionSystem}'s internal parallel threshold, to demonstrate that the pool-backed
+ * constructor costs nothing extra at a scale too small to benefit.
  */
 public final class CollisionBenchmark {
 
@@ -29,7 +32,7 @@ public final class CollisionBenchmark {
   private static final float DELTA = 1f / 60f;
   private static final int WARMUP_FRAMES = 5;
   private static final int TIMED_FRAMES = 20;
-  private static final int[] BOX_COUNTS = {1_000, 4_000, 16_000};
+  private static final int[] BOX_COUNTS = {100, 1_000, 4_000, 16_000};
 
   private CollisionBenchmark() {}
 
@@ -39,11 +42,10 @@ public final class CollisionBenchmark {
     System.out.printf(
         "%-8s %-22s %-22s %-10s%n", "boxes", "sequential ms/frame", "parallel ms/frame", "speedup");
 
-    try (WorkerPool sequentialPool = new WorkerPool(1);
-        WorkerPool parallelPool = new WorkerPool(cores)) {
+    try (WorkerPool parallelPool = new WorkerPool(cores)) {
       for (int count : BOX_COUNTS) {
-        double sequentialMs = run(count, sequentialPool);
-        double parallelMs = run(count, parallelPool);
+        double sequentialMs = run(count, new CollisionSystem());
+        double parallelMs = run(count, new CollisionSystem(parallelPool));
         System.out.printf(
             "%-8d %-22.3f %-22.3f %-10.2fx%n",
             count, sequentialMs, parallelMs, sequentialMs / parallelMs);
@@ -51,7 +53,7 @@ public final class CollisionBenchmark {
     }
   }
 
-  private static double run(int boxCount, WorkerPool pool) {
+  private static double run(int boxCount, CollisionSystem system) {
     World world = new World();
     List<WorldEntity> entities =
         RandomColliderField.populate(world, boxCount, ARENA_SIZE, ARENA_SIZE, BOX_SIZE, SEED);
@@ -59,14 +61,14 @@ public final class CollisionBenchmark {
 
     for (int frame = 0; frame < WARMUP_FRAMES; frame++) {
       step(entities, velocities);
-      ParallelBroadPhase.detect(entities, pool);
+      system.update(world);
     }
 
     long totalNanos = 0L;
     for (int frame = 0; frame < TIMED_FRAMES; frame++) {
       step(entities, velocities);
       long start = System.nanoTime();
-      ParallelBroadPhase.detect(entities, pool);
+      system.update(world);
       totalNanos += System.nanoTime() - start;
     }
     return (totalNanos / (double) TIMED_FRAMES) / 1_000_000.0;

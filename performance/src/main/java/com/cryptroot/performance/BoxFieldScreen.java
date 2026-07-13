@@ -11,19 +11,20 @@ import com.cryptroot.core.render.RenderPipeline;
 import com.cryptroot.core.screen.BaseScreen;
 import com.cryptroot.core.ui.TextLabel;
 import com.cryptroot.core.world.World;
-import com.cryptroot.performance.physics.CollisionDriver;
-import com.cryptroot.performance.physics.ParallelCollisionSystem;
 
 /**
  * Visual showcase: a field of {@link BoxField}-populated boxes bouncing around a fixed arena,
- * flashing red on collision. Press {@code P} to toggle between the sequential {@code
- * core.physics.CollisionSystem} and the experimental {@link ParallelCollisionSystem}; {@code +}/
- * {@code -} rescale the box count. The HUD shows the active mode, box count, and the collision
- * step's wall-clock time so the parallel win (or its absence, at small counts) is directly visible.
+ * flashing red on collision. Press {@code P} to toggle between two {@link CollisionSystem}
+ * instances — one built with the sequential no-arg constructor, one built with {@link
+ * CollisionSystem#CollisionSystem(com.cryptroot.core.concurrent.WorkerPool)} — to make the parallel
+ * win directly visible via the HUD's collision-step timing. {@code +}/{@code -} rescale the box
+ * count; below {@code CollisionSystem}'s internal parallel threshold both modes run identically (by
+ * design — see {@code core.physics.CollisionSystem}), so the difference only shows up once the box
+ * count is large enough.
  *
  * <p>Extends {@link BaseScreen} directly rather than {@code core.screen.BaseGameScreen} because the
- * latter's frame pipeline is sealed to the sequential {@code CollisionSystem} — this screen needs
- * to swap the collision step at runtime.
+ * latter's frame pipeline is sealed to a single {@code CollisionSystem} instance — this screen
+ * needs to swap between two instances at runtime.
  */
 public final class BoxFieldScreen extends BaseScreen<PerfDemoContext> {
 
@@ -35,7 +36,7 @@ public final class BoxFieldScreen extends BaseScreen<PerfDemoContext> {
   private final World world = new World();
   private final RenderPipeline pipeline;
   private final CollisionSystem sequential = new CollisionSystem();
-  private final ParallelCollisionSystem parallel;
+  private final CollisionSystem parallel;
 
   private TextureRegion pixel;
   private TextLabel hud;
@@ -46,7 +47,7 @@ public final class BoxFieldScreen extends BaseScreen<PerfDemoContext> {
   public BoxFieldScreen(PerfDemoContext context) {
     super(context);
     this.pipeline = new RenderPipeline(context);
-    this.parallel = new ParallelCollisionSystem(context.workerPool());
+    this.parallel = new CollisionSystem(context.workerPool());
   }
 
   @Override
@@ -76,7 +77,7 @@ public final class BoxFieldScreen extends BaseScreen<PerfDemoContext> {
     pipeline.update(world, delta);
 
     long start = System.nanoTime();
-    activeDriver().update(world);
+    activeSystem().update(world);
     lastCollisionMillis = (System.nanoTime() - start) / 1_000_000.0;
 
     pipeline.render(world, context.camera(), uiLayer);
@@ -89,8 +90,8 @@ public final class BoxFieldScreen extends BaseScreen<PerfDemoContext> {
     pipeline.reset();
   }
 
-  private CollisionDriver activeDriver() {
-    return useParallel ? parallel::update : sequential::update;
+  private CollisionSystem activeSystem() {
+    return useParallel ? parallel : sequential;
   }
 
   private void spawnBoxes(int count) {

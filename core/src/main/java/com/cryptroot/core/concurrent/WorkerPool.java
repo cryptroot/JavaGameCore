@@ -1,4 +1,4 @@
-package com.cryptroot.performance.concurrent;
+package com.cryptroot.core.concurrent;
 
 import com.badlogic.gdx.utils.Disposable;
 import java.util.ArrayList;
@@ -8,22 +8,24 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinTask;
 
 /**
- * Experimental thread manager for the {@code performance} module's parallel showcases: a dedicated
- * {@link ForkJoinPool} (never the shared {@link ForkJoinPool#commonPool()}, so its lifecycle is
- * owned and disposed exactly like any other {@link Disposable} on a {@code GameContext}) plus a
- * blocking "fork many / join all" primitive.
+ * A small "thread manager" for CPU-bound, data-parallel work over an int range: a dedicated {@link
+ * ForkJoinPool} (never the shared {@link ForkJoinPool#commonPool()}, so its lifecycle is owned and
+ * disposed exactly like any other {@link Disposable} on a {@code GameContext}) plus a blocking
+ * "fork many / join all" primitive.
  *
  * <p>{@link #parallelFor} and {@link #mapChunks} split {@code [fromInclusive, toExclusive)} into up
  * to {@link #threads()} contiguous chunks (never smaller than {@code minChunkSize}), submit one
  * task per chunk, then <em>block</em> until every chunk has completed before returning — the "gate"
  * a caller waits on before touching results that require single-threaded, mutually exclusive
- * follow-up (e.g. firing collision enter/exit signals; see {@code ParallelCollisionSystem}). Ranges
- * too small to be worth splitting (or a pool sized to a single thread) run inline on the calling
- * thread instead of paying submission overhead — the result is identical either way, only the
- * parallelism differs.
+ * follow-up (e.g. firing collision enter/exit signals; see {@code CollisionSystem}). Ranges too
+ * small to be worth splitting (or a pool sized to a single thread) run inline on the calling thread
+ * instead of paying submission overhead — the result is identical either way, only the parallelism
+ * differs.
  *
- * <p>This class deliberately lives in {@code performance} as an experimental prototype rather than
- * {@code core.concurrent}; promote it once a real game needs general-purpose parallel work.
+ * <p>Intended for read-only or embarrassingly-parallel work only (e.g. broad-phase overlap
+ * detection, which only reads collider bounds). Callers remain responsible for keeping any
+ * mutually-exclusive follow-up (mutating the world, firing listeners) single-threaded, after the
+ * gate.
  */
 public final class WorkerPool implements Disposable, AutoCloseable {
 

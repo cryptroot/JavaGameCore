@@ -22,14 +22,15 @@ framework and the source of truth.** Game code consumes them; it does not re-imp
 demo        ──▶ core     demo        = Cave Defense — a bundled reference/example game
 demo        ──▶ tiled    tiled       = TMX parsing + rendering  (com.cryptroot.tiled)
 tiled       ──▶ core     core        = engine framework          (com.cryptroot.core)
-performance ──▶ core     performance = experimental parallel-collision benchmark + demo
+performance ──▶ core     performance = benchmark + visual demo showcasing core's parallel CollisionSystem
 ```
 Dependencies point **inward**: `core` never imports `tiled` or a game; `tiled` never imports
 a game. A new feature's module is the innermost one that could reuse it. `demo` is just one
 example consumer — an actual game (e.g. built in a sibling project when this repo is used as a
 submodule/library) follows the exact same rule: it depends on `core`/`tiled`, never the reverse.
-`performance` is not a game either — it's an experimental proving ground for parallelizing a
-`core` system (see `performance/CLAUDE.md`); nothing there is promoted into `core` until proven.
+`performance` is not a game either — it benchmarks and visually showcases `core.physics.CollisionSystem`'s
+`WorkerPool`-backed parallel detection path (see `performance/CLAUDE.md`); it was originally an
+experimental proving ground for that feature, now promoted into `core` (`core.concurrent`).
 
 ## Where does new code go? (the decision rule)
 > **Would another, unrelated game reuse this unchanged?** → `core` (or `tiled` if it is

@@ -4,12 +4,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.cryptroot.core.concurrent.WorkerPool;
 import com.cryptroot.core.event.Signal;
 import com.cryptroot.core.world.World;
 import com.cryptroot.core.world.WorldEntity;
 import com.cryptroot.core.world.component.DefaultPositionComponent;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class CollisionSystemTest {
@@ -152,5 +156,80 @@ class CollisionSystemTest {
 
     assertTrue(a.exited.isEmpty());
     assertTrue(b.exited.isEmpty());
+  }
+
+  // ---------------------------------------------------------------------
+  // WorkerPool-backed (parallel) detection
+  // ---------------------------------------------------------------------
+
+  @Test
+  void rejectsNullPool() {
+    assertThrows(NullPointerException.class, () -> new CollisionSystem(null));
+  }
+
+  @Test
+  void parallelConstructorBelowThresholdStillDetectsCorrectly() {
+    // Far fewer colliders than PARALLEL_THRESHOLD - exercises the inline fallback inside the
+    // pool-backed constructor, which must behave identically to the sequential constructor.
+    World world = new World();
+    RecordingListener a = new RecordingListener();
+    RecordingListener b = new RecordingListener();
+    WorldEntity ea = boxAt(world, 0f, 0f, a);
+    WorldEntity eb = boxAt(world, 0.5f, 0f, b);
+
+    try (WorkerPool pool = new WorkerPool(4)) {
+      new CollisionSystem(pool).update(world);
+    }
+
+    assertEquals(List.of(eb), a.entered);
+    assertEquals(List.of(ea), b.entered);
+  }
+
+  @Test
+  void parallelDetectionMatchesSequentialAtScale() {
+    World world = new World();
+    int count = CollisionSystem.PARALLEL_THRESHOLD * 4;
+    Random rng = new Random(7);
+    for (int i = 0; i < count; i++) {
+      float x = rng.nextFloat() * 200f;
+      float y = rng.nextFloat() * 200f;
+      DefaultPositionComponent anchor = new DefaultPositionComponent(x, y);
+      BoxCollider collider = new BoxCollider(anchor, 0f, 0f, 5f, 5f);
+      WorldEntity entity = new WorldEntity().with(Collider.class, collider);
+      entity.with(CollisionListener.class, new RecordingListener());
+      world.add(entity);
+    }
+
+    Set<WorldEntity> sequentialTouching = enteredEntities(world, new CollisionSystem());
+    resetListeners(world);
+    Set<WorldEntity> parallelTouching;
+    try (WorkerPool pool = new WorkerPool(8)) {
+      parallelTouching = enteredEntities(world, new CollisionSystem(pool));
+    }
+
+    assertEquals(sequentialTouching, parallelTouching);
+    assertTrue(!sequentialTouching.isEmpty(), "expected at least one overlap at this density");
+  }
+
+  /** Runs one {@code update()} and returns every entity that fired at least one collision enter. */
+  private static Set<WorldEntity> enteredEntities(World world, CollisionSystem system) {
+    system.update(world);
+    Set<WorldEntity> touched = new HashSet<>();
+    for (WorldEntity e : world.entities()) {
+      RecordingListener listener = (RecordingListener) e.get(CollisionListener.class).orElse(null);
+      if (listener != null && !listener.entered.isEmpty()) touched.add(e);
+    }
+    return touched;
+  }
+
+  /** Clears every entity's recorded enter/exit lists so a second system can be measured cleanly. */
+  private static void resetListeners(World world) {
+    for (WorldEntity e : world.entities()) {
+      RecordingListener listener = (RecordingListener) e.get(CollisionListener.class).orElse(null);
+      if (listener != null) {
+        listener.entered.clear();
+        listener.exited.clear();
+      }
+    }
   }
 }
