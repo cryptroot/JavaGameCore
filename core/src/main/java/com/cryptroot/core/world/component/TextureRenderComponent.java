@@ -1,5 +1,6 @@
 package com.cryptroot.core.world.component;
 
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.cryptroot.core.render.RenderPass;
@@ -15,6 +16,11 @@ import java.util.Objects;
  *
  * <p>The {@link #sortKey()} returns the entity's world Y ({@link #y()}), so static props placed in
  * the {@link RenderLayer#WORLD} layer participate correctly in painter's-algorithm Y-sorting.
+ *
+ * <p>Two optional, independent knobs support common overlay use cases (a translucent placement
+ * ghost, a hide-when-off-grid indicator, …) without a decorator: {@link #setTint} multiplies the
+ * drawn colour (defaults to opaque white, i.e. the region's native colours), and {@link
+ * #setVisible} skips drawing entirely while kept {@code false} (defaults to {@code true}).
  */
 public final class TextureRenderComponent implements RenderComponent, PositionComponent {
 
@@ -24,6 +30,9 @@ public final class TextureRenderComponent implements RenderComponent, PositionCo
   private final float width;
   private final float height;
   private final RenderPass renderPass;
+  private final Color tint = new Color(Color.WHITE);
+  private final Color batchColorScratch = new Color();
+  private boolean visible = true;
 
   /**
    * @param region the texture to draw
@@ -51,13 +60,37 @@ public final class TextureRenderComponent implements RenderComponent, PositionCo
     this.renderPass = renderPass;
   }
 
+  /** Multiplies the drawn colour by {@code tint} (copied); {@link Color#WHITE} draws unmodified. */
+  public void setTint(Color tint) {
+    Objects.requireNonNull(tint, "tint must not be null");
+    this.tint.set(tint);
+  }
+
+  /** The current tint (a defensive copy). */
+  public Color tint() {
+    return new Color(tint);
+  }
+
+  /** When {@code false}, {@link #draw} is a no-op. Defaults to {@code true}. */
+  public void setVisible(boolean visible) {
+    this.visible = visible;
+  }
+
+  public boolean isVisible() {
+    return visible;
+  }
+
   // -------------------------------------------------------------------------
   // RenderComponent
   // -------------------------------------------------------------------------
 
   @Override
   public void draw(PolygonSpriteBatch batch) {
+    if (!visible) return;
+    batchColorScratch.set(batch.getColor());
+    batch.setColor(tint);
     batch.draw(region, x, y, width, height);
+    batch.setColor(batchColorScratch);
   }
 
   @Override

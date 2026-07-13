@@ -19,8 +19,9 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Game-specific enemy spawner: periodically drops an enemy at a random column on the bottom row of
- * the arena, pathfinding around any placed towers to the nearest open column on the top row.
+ * Game-specific enemy spawner: periodically drops an enemy at a random floor column on the bottom
+ * row of the arena (never the dark-brown/black border — see {@link PlacementGrid}), pathfinding
+ * around any placed towers to the nearest open floor column on the top row.
  */
 final class EnemySpawnerComponent implements UpdateComponent {
 
@@ -66,7 +67,7 @@ final class EnemySpawnerComponent implements UpdateComponent {
 
   private void spawn() {
     Grid grid = placement.grid();
-    int preferredCol = MathUtils.random(grid.columns() - 1);
+    int preferredCol = MathUtils.random(placement.minSpawnColumn(), placement.maxSpawnColumn());
     GridPoint2 start = placement.nearestOpenInRow(0, preferredCol).orElse(null);
     if (start == null) return; // bottom row fully occupied — skip this spawn
 

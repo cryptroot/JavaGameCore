@@ -2,6 +2,7 @@ package com.cryptroot.core.world.component;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -74,5 +75,54 @@ class HoverableSpriteComponentTest {
 
     sprite.onHoverExit().emit();
     assertFalse(sprite.isHovered());
+  }
+
+  @Test
+  void explicitSizeOverridesNativeRegionSize() {
+    TextureRegion region =
+        new TextureRegion() {
+          @Override
+          public int getRegionWidth() {
+            return 256;
+          }
+
+          @Override
+          public int getRegionHeight() {
+            return 256;
+          }
+        };
+    HoverableSpriteComponent sprite =
+        new HoverableSpriteComponent(region, 8f, 10f, 20f, 30f, RenderPass.WORLD);
+
+    Rectangle out = new Rectangle();
+    sprite.bounds(out);
+    assertEquals(8f, out.x);
+    assertEquals(10f, out.y);
+    assertEquals(20f, out.width, "draw width must ignore the 256px native region size");
+    assertEquals(30f, out.height, "draw height must ignore the 256px native region size");
+    assertTrue(sprite.containsPoint(27.9f, 39.9f));
+    assertFalse(sprite.containsPoint(28.1f, 10f));
+  }
+
+  @Test
+  void rejectsNonPositiveExplicitSize() {
+    TextureRegion region =
+        new TextureRegion() {
+          @Override
+          public int getRegionWidth() {
+            return 16;
+          }
+
+          @Override
+          public int getRegionHeight() {
+            return 16;
+          }
+        };
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new HoverableSpriteComponent(region, 0f, 0f, 0f, 10f, RenderPass.WORLD));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new HoverableSpriteComponent(region, 0f, 0f, 10f, -1f, RenderPass.WORLD));
   }
 }
