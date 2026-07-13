@@ -19,14 +19,17 @@ framework and the source of truth.** Game code consumes them; it does not re-imp
 
 ## Modules (Maven reactor, Java 21, libGDX 1.14.0 / LWJGL3, Jackson, JUnit 5)
 ```
-demo  ──▶ core            demo    = Cave Defense — a bundled reference/example game
-demo  ──▶ tiled           tiled   = TMX parsing + rendering  (com.cryptroot.tiled)
-tiled ──▶ core            core    = engine framework          (com.cryptroot.core)
+demo        ──▶ core     demo        = Cave Defense — a bundled reference/example game
+demo        ──▶ tiled    tiled       = TMX parsing + rendering  (com.cryptroot.tiled)
+tiled       ──▶ core     core        = engine framework          (com.cryptroot.core)
+performance ──▶ core     performance = experimental parallel-collision benchmark + demo
 ```
 Dependencies point **inward**: `core` never imports `tiled` or a game; `tiled` never imports
 a game. A new feature's module is the innermost one that could reuse it. `demo` is just one
 example consumer — an actual game (e.g. built in a sibling project when this repo is used as a
 submodule/library) follows the exact same rule: it depends on `core`/`tiled`, never the reverse.
+`performance` is not a game either — it's an experimental proving ground for parallelizing a
+`core` system (see `performance/CLAUDE.md`); nothing there is promoted into `core` until proven.
 
 ## Where does new code go? (the decision rule)
 > **Would another, unrelated game reuse this unchanged?** → `core` (or `tiled` if it is
@@ -92,4 +95,5 @@ import order/unused imports repo-wide.
 
 ## Read next
 - [CAPABILITIES.md](Java/CAPABILITIES.md) — what already exists (search here before building).
-- `Java/core/CLAUDE.md`, `Java/tiled/CLAUDE.md`, `Java/demo/CLAUDE.md` — per-module rules.
+- `Java/core/CLAUDE.md`, `Java/tiled/CLAUDE.md`, `Java/demo/CLAUDE.md`, `Java/performance/CLAUDE.md`
+  — per-module rules.
