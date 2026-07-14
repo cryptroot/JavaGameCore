@@ -31,7 +31,7 @@ public final class BoxFieldScreen extends BaseScreen<PerfDemoContext> {
   private static final int INITIAL_COUNT = 2000;
   private static final int COUNT_STEP = 500;
   private static final int MIN_COUNT = 100;
-  private static final int MAX_COUNT = 20_000;
+  private static final int MAX_COUNT = 200_000;
 
   private final World world = new World();
   private final RenderPipeline pipeline;
