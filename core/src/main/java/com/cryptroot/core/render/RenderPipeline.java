@@ -43,7 +43,7 @@ public final class RenderPipeline implements Disposable {
   private final HoverSystem hoverSystem = new HoverSystem();
   private final ClickSystem clickSystem = new ClickSystem();
   private final DialogueSystem dialogueSystem = new DialogueSystem();
-  private final CollisionSystem collisionSystem = new CollisionSystem();
+  private final CollisionSystem collisionSystem;
   private final OutlineRenderSystem outlineSystem = new OutlineRenderSystem();
   private final WorldRenderSystem worldRenderSystem = new WorldRenderSystem();
   private final NormalMappedRenderSystem nmRenderSystem = new NormalMappedRenderSystem();
@@ -56,6 +56,7 @@ public final class RenderPipeline implements Disposable {
 
   public RenderPipeline(GameContext context) {
     this.context = Objects.requireNonNull(context, "context must not be null");
+    this.collisionSystem = new CollisionSystem(context.workerPool());
   }
 
   // -------------------------------------------------------------------------
@@ -92,7 +93,9 @@ public final class RenderPipeline implements Disposable {
    * <p>Cheap to call unconditionally even when no entity carries a {@link
    * com.cryptroot.core.physics.Collider} (a single filtering pass over {@link World#entities()}) —
    * a game opts in simply by attaching {@link com.cryptroot.core.physics.Collider} components, with
-   * no separate wiring.
+   * no separate wiring. Detection is transparently parallelized across {@link
+   * GameContext#workerPool()} once the collider count is large enough to be worth it (see {@link
+   * com.cryptroot.core.physics.CollisionSystem#CollisionSystem(com.cryptroot.core.concurrent.WorkerPool)}).
    */
   public void processCollisions(World world) {
     collisionSystem.update(world);

@@ -1,5 +1,6 @@
 package com.cryptroot.core.physics;
 
+import com.cryptroot.core.concurrent.WorkerPool;
 import com.cryptroot.core.world.World;
 import com.cryptroot.core.world.WorldEntity;
 import java.util.ArrayList;
@@ -23,13 +24,44 @@ import java.util.Set;
  * its pairs are exited on that later {@link #update(World)} call with no special-cased cleanup
  * needed, exactly like {@code HoverSystem}'s live hit-test.
  *
- * <p>O(n²) pairwise broad-phase overlap test across all {@link Collider} entities — deliberately
- * simple, matching this framework's "correctness first" style; a spatial index would be a future
- * optimisation if entity counts ever demand it.
+ * <p><b>Broad-phase detection</b> is O(n²) pairwise across all {@link Collider} entities —
+ * deliberately simple, matching this framework's "correctness first" style. Pass a {@link
+ * WorkerPool} to {@link #CollisionSystem(WorkerPool)} to parallelize just that detection step once
+ * the collider count reaches {@link #PARALLEL_THRESHOLD} (below that it always runs inline — thread
+ * dispatch would outweigh the O(n²) work saved). Resolving the result — firing {@link
+ * CollisionListener} enter/exit — always stays single-threaded and sequential regardless, since
+ * listener callbacks are arbitrary game code that may mutate the world; only the read-only overlap
+ * test ({@link Collider#overlaps}, which never mutates anything) runs concurrently. Behaviour is
+ * identical either way, only wall-clock time differs. {@link
+ * com.cryptroot.core.render.RenderPipeline} passes {@link
+ * com.cryptroot.core.GameContext#workerPool()} automatically, so every consumer gets this for free
+ * with no extra wiring — just attach {@link Collider} components as usual.
  */
 public final class CollisionSystem {
 
+  /**
+   * Collider count at or above which {@link #CollisionSystem(WorkerPool)} switches detection from
+   * the plain sequential loop to the {@link WorkerPool}-backed striped loop. Below this, detection
+   * always runs inline on the calling thread — the same code path as the no-arg constructor —
+   * because thread dispatch overhead would outweigh the O(n²) work saved at that scale.
+   */
+  static final int PARALLEL_THRESHOLD = 128;
+
+  private final WorkerPool pool;
   private Set<PairKey> touching = new HashSet<>();
+
+  /** Sequential detection only — no thread pool involved. */
+  public CollisionSystem() {
+    this.pool = null;
+  }
+
+  /**
+   * Detection runs striped across {@code pool}'s threads once the collider count reaches {@link
+   * #PARALLEL_THRESHOLD}; below that it runs inline, identical to {@link #CollisionSystem()}.
+   */
+  public CollisionSystem(WorkerPool pool) {
+    this.pool = Objects.requireNonNull(pool, "pool must not be null");
+  }
 
   /** Re-scans every {@link Collider}-carrying entity in {@code world} and fires transitions. */
   public void update(World world) {
@@ -40,16 +72,10 @@ public final class CollisionSystem {
       if (e.has(Collider.class)) colliders.add(e);
     }
 
-    Set<PairKey> current = new HashSet<>();
-    for (int i = 0; i < colliders.size(); i++) {
-      Collider a = colliders.get(i).get(Collider.class).get();
-      for (int j = i + 1; j < colliders.size(); j++) {
-        Collider b = colliders.get(j).get(Collider.class).get();
-        if (a.overlaps(b)) {
-          current.add(new PairKey(colliders.get(i), colliders.get(j)));
-        }
-      }
-    }
+    Set<PairKey> current =
+        (pool != null && colliders.size() >= PARALLEL_THRESHOLD)
+            ? detectParallel(colliders, pool)
+            : detectSequential(colliders);
 
     for (PairKey pair : current) {
       if (!touching.contains(pair)) notify(pair, true);
@@ -66,6 +92,63 @@ public final class CollisionSystem {
    */
   public void reset() {
     touching = new HashSet<>();
+  }
+
+  private static Set<PairKey> detectSequential(List<WorldEntity> colliders) {
+    Set<PairKey> current = new HashSet<>();
+    for (int i = 0; i < colliders.size(); i++) {
+      Collider a = colliders.get(i).get(Collider.class).get();
+      for (int j = i + 1; j < colliders.size(); j++) {
+        Collider b = colliders.get(j).get(Collider.class).get();
+        if (a.overlaps(b)) {
+          current.add(new PairKey(colliders.get(i), colliders.get(j)));
+        }
+      }
+    }
+    return current;
+  }
+
+  /**
+   * Same result as {@link #detectSequential}, but the outer index is striped round-robin across
+   * {@code pool}'s threads (not split into contiguous ranges), so every stripe gets an even mix of
+   * "long" rows (low indices, which scan almost the whole array) and "short" rows (high indices,
+   * which scan almost nothing) — a contiguous split would starve whichever thread gets the high
+   * end.
+   */
+  private static Set<PairKey> detectParallel(List<WorldEntity> colliders, WorkerPool pool) {
+    int n = colliders.size();
+    Collider[] shapes = new Collider[n];
+    for (int i = 0; i < n; i++) {
+      shapes[i] = colliders.get(i).get(Collider.class).get();
+    }
+
+    int stripeCount = Math.min(pool.threads(), n);
+    List<List<PairKey>> perStripe =
+        pool.mapChunks(
+                0,
+                stripeCount,
+                1,
+                (loStripe, hiStripe) -> {
+                  List<PairKey> found = new ArrayList<>();
+                  for (int stripe = loStripe; stripe < hiStripe; stripe++) {
+                    for (int i = stripe; i < n; i += stripeCount) {
+                      Collider a = shapes[i];
+                      for (int j = i + 1; j < n; j++) {
+                        if (a.overlaps(shapes[j])) {
+                          found.add(new PairKey(colliders.get(i), colliders.get(j)));
+                        }
+                      }
+                    }
+                  }
+                  return found;
+                })
+            .get();
+
+    Set<PairKey> current = new HashSet<>();
+    for (List<PairKey> stripeResult : perStripe) {
+      current.addAll(stripeResult);
+    }
+    return current;
   }
 
   private static void notify(PairKey pair, boolean entered) {

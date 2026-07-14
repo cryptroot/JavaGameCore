@@ -14,6 +14,7 @@
         <module>core</module>
         <module>tiled</module>
         <module>demo</module>
+        <module>performance</module>
     </modules>
 
     <properties>

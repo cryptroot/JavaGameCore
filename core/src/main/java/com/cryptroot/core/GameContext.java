@@ -6,6 +6,7 @@ import com.badlogic.gdx.utils.Disposable;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.cryptroot.core.audio.AudioManager;
+import com.cryptroot.core.concurrent.WorkerPool;
 import com.cryptroot.core.event.EventBus;
 import com.cryptroot.core.render.NormalMappedRenderer;
 import com.cryptroot.core.render.SelectionOutlineRenderer;
@@ -28,6 +29,7 @@ public abstract class GameContext implements Disposable {
   private final EventBus eventBus;
   private final AssetRegistry assets;
   private final AudioManager audio;
+  private final WorkerPool workerPool;
 
   protected GameContext(float worldWidth, float worldHeight) {
     if (worldWidth <= 0f || worldHeight <= 0f) {
@@ -47,6 +49,7 @@ public abstract class GameContext implements Disposable {
     eventBus = new EventBus();
     assets = new AssetRegistry();
     audio = new AudioManager();
+    workerPool = new WorkerPool();
   }
 
   // -------------------------------------------------------------------------
@@ -85,6 +88,15 @@ public abstract class GameContext implements Disposable {
     return audio;
   }
 
+  /**
+   * Shared {@link WorkerPool} for CPU-bound parallel work (e.g. {@link
+   * com.cryptroot.core.physics.CollisionSystem}'s broad-phase detection at scale). One pool per
+   * running game, sized to {@link Runtime#availableProcessors()} — no static singleton.
+   */
+  public WorkerPool workerPool() {
+    return workerPool;
+  }
+
   // -------------------------------------------------------------------------
   // Disposable
   // -------------------------------------------------------------------------
@@ -96,5 +108,6 @@ public abstract class GameContext implements Disposable {
     normalMappedRenderer.dispose();
     outlineRenderer.dispose();
     batch.dispose();
+    workerPool.dispose();
   }
 }
