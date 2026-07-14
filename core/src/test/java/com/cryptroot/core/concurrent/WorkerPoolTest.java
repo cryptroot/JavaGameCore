@@ -39,8 +39,18 @@ class WorkerPoolTest {
   @Test
   void mapChunksReturnsOneResultPerChunkInRangeOrder() {
     try (WorkerPool pool = new WorkerPool(4)) {
-      List<Integer> lengths = pool.mapChunks(0, 100, 1, (lo, hi) -> hi - lo);
+      List<Integer> lengths = pool.mapChunks(0, 100, 1, (lo, hi) -> hi - lo).get();
       assertEquals(100, lengths.stream().mapToInt(Integer::intValue).sum());
+    }
+  }
+
+  @Test
+  void mapChunksGateCanBeJoinedLaterAndMoreThanOnce() {
+    try (WorkerPool pool = new WorkerPool(4)) {
+      TaskGate<Integer> gate = pool.mapChunks(0, 100, 1, (lo, hi) -> hi - lo);
+      List<Integer> lengths = gate.get();
+      assertEquals(100, lengths.stream().mapToInt(Integer::intValue).sum());
+      assertEquals(lengths, gate.get());
     }
   }
 
@@ -48,7 +58,7 @@ class WorkerPoolTest {
   void mapChunksUsesInlineFastPathWhenRangeIsTooSmallToSplit() {
     try (WorkerPool pool = new WorkerPool(8)) {
       // minChunkSize forces a single chunk even though parallelism is 8.
-      List<Integer> result = pool.mapChunks(0, 10, 100, (lo, hi) -> hi - lo);
+      List<Integer> result = pool.mapChunks(0, 10, 100, (lo, hi) -> hi - lo).get();
       assertEquals(List.of(10), result);
     }
   }

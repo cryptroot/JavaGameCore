@@ -125,23 +125,24 @@ public final class CollisionSystem {
     int stripeCount = Math.min(pool.threads(), n);
     List<List<PairKey>> perStripe =
         pool.mapChunks(
-            0,
-            stripeCount,
-            1,
-            (loStripe, hiStripe) -> {
-              List<PairKey> found = new ArrayList<>();
-              for (int stripe = loStripe; stripe < hiStripe; stripe++) {
-                for (int i = stripe; i < n; i += stripeCount) {
-                  Collider a = shapes[i];
-                  for (int j = i + 1; j < n; j++) {
-                    if (a.overlaps(shapes[j])) {
-                      found.add(new PairKey(colliders.get(i), colliders.get(j)));
+                0,
+                stripeCount,
+                1,
+                (loStripe, hiStripe) -> {
+                  List<PairKey> found = new ArrayList<>();
+                  for (int stripe = loStripe; stripe < hiStripe; stripe++) {
+                    for (int i = stripe; i < n; i += stripeCount) {
+                      Collider a = shapes[i];
+                      for (int j = i + 1; j < n; j++) {
+                        if (a.overlaps(shapes[j])) {
+                          found.add(new PairKey(colliders.get(i), colliders.get(j)));
+                        }
+                      }
                     }
                   }
-                }
-              }
-              return found;
-            });
+                  return found;
+                })
+            .get();
 
     Set<PairKey> current = new HashSet<>();
     for (List<PairKey> stripeResult : perStripe) {

@@ -10,22 +10,24 @@ import java.util.concurrent.ForkJoinTask;
 /**
  * A small "thread manager" for CPU-bound, data-parallel work over an int range: a dedicated {@link
  * ForkJoinPool} (never the shared {@link ForkJoinPool#commonPool()}, so its lifecycle is owned and
- * disposed exactly like any other {@link Disposable} on a {@code GameContext}) plus a blocking
- * "fork many / join all" primitive.
+ * disposed exactly like any other {@link Disposable} on a {@code GameContext}) plus a "fork many /
+ * join when needed" primitive.
  *
  * <p>{@link #parallelFor} and {@link #mapChunks} split {@code [fromInclusive, toExclusive)} into up
- * to {@link #threads()} contiguous chunks (never smaller than {@code minChunkSize}), submit one
- * task per chunk, then <em>block</em> until every chunk has completed before returning — the "gate"
- * a caller waits on before touching results that require single-threaded, mutually exclusive
- * follow-up (e.g. firing collision enter/exit signals; see {@code CollisionSystem}). Ranges too
- * small to be worth splitting (or a pool sized to a single thread) run inline on the calling thread
- * instead of paying submission overhead — the result is identical either way, only the parallelism
- * differs.
+ * to {@link #threads()} contiguous chunks (never smaller than {@code minChunkSize}) and submit one
+ * task per chunk. {@link #mapChunks} does not block: it returns a {@link TaskGate} immediately, so
+ * a caller can keep going and only pay for the "gate" — {@link TaskGate#get()} — once the results
+ * are actually needed (e.g. after doing other work, or after handing the gate off to whatever code
+ * needs the results). {@link #parallelFor} has no results to defer, so it still blocks until every
+ * chunk has completed before returning, exactly as before. Ranges too small to be worth splitting
+ * (or a pool sized to a single thread) run inline on the calling thread instead of paying
+ * submission overhead — the result is identical either way, only the parallelism (and, for {@code
+ * mapChunks}, whether {@link TaskGate#get()} actually blocks) differs.
  *
  * <p>Intended for read-only or embarrassingly-parallel work only (e.g. broad-phase overlap
  * detection, which only reads collider bounds). Callers remain responsible for keeping any
  * mutually-exclusive follow-up (mutating the world, firing listeners) single-threaded, after the
- * gate.
+ * gate (see {@code CollisionSystem}).
  */
 public final class WorkerPool implements Disposable, AutoCloseable {
 
@@ -58,24 +60,26 @@ public final class WorkerPool implements Disposable, AutoCloseable {
   public void parallelFor(int fromInclusive, int toExclusive, int minChunkSize, IntRangeTask task) {
     Objects.requireNonNull(task, "task must not be null");
     mapChunks(
-        fromInclusive,
-        toExclusive,
-        minChunkSize,
-        (lo, hi) -> {
-          task.run(lo, hi);
-          return null;
-        });
+            fromInclusive,
+            toExclusive,
+            minChunkSize,
+            (lo, hi) -> {
+              task.run(lo, hi);
+              return null;
+            })
+        .get();
   }
 
   /**
-   * Splits {@code [fromInclusive, toExclusive)} into chunks and applies {@code fn} to each,
-   * blocking until every chunk has completed, then returns one result per chunk in range order.
+   * Splits {@code [fromInclusive, toExclusive)} into chunks and submits one task per chunk without
+   * blocking, returning a {@link TaskGate} that joins them (in range order) on {@link
+   * TaskGate#get()}.
    *
    * @throws NullPointerException if {@code fn} is null
    * @throws IllegalArgumentException if {@code toExclusive < fromInclusive} or {@code minChunkSize
    *     < 1}
    */
-  public <R> List<R> mapChunks(
+  public <R> TaskGate<R> mapChunks(
       int fromInclusive, int toExclusive, int minChunkSize, IntRangeFunction<R> fn) {
     Objects.requireNonNull(fn, "fn must not be null");
     if (toExclusive < fromInclusive) {
@@ -87,13 +91,13 @@ public final class WorkerPool implements Disposable, AutoCloseable {
     }
 
     int length = toExclusive - fromInclusive;
-    if (length == 0) return List.of();
+    if (length == 0) return TaskGate.ofResults(List.of());
 
     int chunkCount = Math.max(1, Math.min(parallelism, length / minChunkSize));
     if (chunkCount == 1) {
       // Inline fast path: not worth (or not able to) split further — identical result, no
-      // submission overhead.
-      return List.of(fn.apply(fromInclusive, toExclusive));
+      // submission overhead, so the gate already has its result and never blocks.
+      return TaskGate.ofResults(List.of(fn.apply(fromInclusive, toExclusive)));
     }
 
     int baseSize = length / chunkCount;
@@ -108,12 +112,7 @@ public final class WorkerPool implements Disposable, AutoCloseable {
       tasks.add(pool.submit(() -> fn.apply(chunkFrom, chunkTo)));
     }
 
-    // Gate: block until every chunk has finished before the caller proceeds.
-    List<R> results = new ArrayList<>(chunkCount);
-    for (ForkJoinTask<R> t : tasks) {
-      results.add(t.join());
-    }
-    return results;
+    return TaskGate.ofTasks(tasks);
   }
 
   @Override

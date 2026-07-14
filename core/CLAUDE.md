@@ -49,12 +49,15 @@ Put reusable, game-agnostic engine primitives here. See root [../CAPABILITIES.md
   changes needed); below the threshold it always runs inline. Resolution (firing listeners) is
   always sequential regardless.
 - `core.concurrent` — `WorkerPool`: a dedicated `ForkJoinPool` wrapper for CPU-bound, read-only
-  parallel work over an int range (`parallelFor`/`mapChunks`, chunked and load-balanced by the
-  caller, blocking `.join()` "gate" before returning). One instance lives on every `GameContext`
-  (`workerPool()`, disposed alongside the other services) — do not construct a second one per
-  system; pass the context's pool in. Only ever parallelize work that doesn't mutate shared state;
-  keep any mutually-exclusive follow-up (world mutation, listener callbacks) single-threaded and
-  run it after the pool call returns, exactly like `CollisionSystem` does.
+  parallel work over an int range, chunked and load-balanced by the caller. `parallelFor` blocks
+  until every chunk completes (it has no results to defer). `mapChunks` does NOT block — it forks
+  the chunks and returns a `TaskGate<R>` immediately; call `TaskGate.get()` once the results are
+  actually needed (that join is the new deferred "gate", safe to call more than once). One
+  `WorkerPool` instance lives on every `GameContext` (`workerPool()`, disposed alongside the other
+  services) — do not construct a second one per system; pass the context's pool in. Only ever
+  parallelize work that doesn't mutate shared state; keep any mutually-exclusive follow-up (world
+  mutation, listener callbacks) single-threaded and run it after `TaskGate.get()` returns, exactly
+  like `CollisionSystem` does.
 - `core.audio` — `AudioManager`: a `Sound`/`Music` cache mirroring `ResourceManager`'s
   `getOrCreate*`-by-classpath pattern, plus master/sfx/music volume (fail-soft clamped to
   `[0,1]`). Owned by `GameContext.audio()`.
