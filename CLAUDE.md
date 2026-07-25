@@ -85,6 +85,10 @@ mvn -pl demo  -am package    # demo fat-jar
 mvn test                     # full reactor
 mvn spotless:apply           # reformat before finishing any change (see below)
 ```
+Run the demo after packaging:
+```
+java -cp demo/target/*.jar com.cryptroot.demo.CaveDemoLauncher
+```
 If Maven Central is unreachable in your environment, artifacts must already be in `~/.m2`.
 
 **Always run `mvn spotless:apply` after editing Java files and before considering a change

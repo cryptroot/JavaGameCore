@@ -1,53 +1,58 @@
 # JavaGameCore
 
-A framework-first Java game project built on [libGDX](https://libgdx.com/). The `core` and
-`tiled` modules are a reusable engine framework; `demo` is a thin, game-specific consumer of
-that framework, bundled as a reference example (currently a "Cave Defense" demo). **"Game" in
-this document means any consumer of the framework** — `demo`, or (when this repo is embedded as
-a submodule/library, as it is in this checkout) a sibling project that depends on `core`/`tiled`.
+A reusable 2D game framework for Java, built on [libGDX](https://libgdx.com/) 1.14.0 (LWJGL3)
+and targeting Java 21.
 
-> **The #1 rule:** don't re-invent the framework. Before writing grid, pathfinding, timer,
-> tween, health-bar, entity, render, UI, event, camera, or asset code in your game, check
-> [CAPABILITIES.md](CAPABILITIES.md) — it almost certainly already exists in `core`/`tiled`.
+It provides the pieces most 2D games need — an ECS-lite entity/component world, a layered
+render pipeline, screens and a shared game context, a ~40-widget UI toolkit, an event bus,
+camera pan/zoom, asset and audio caches, grid geometry and A* pathfinding, timers and
+coroutine-like sequencing, collision detection, health/movement/projectile components,
+dialogue, quest state and localization, plus Tiled (TMX) map parsing and rendering — so a game
+project only has to write its own rules, content and balance.
+
+```java
+WorldEntity enemy =
+    new WorldEntity()
+        .with(PositionComponent.class, new PositionComponent(x, y))
+        .with(RenderComponent.class, new TextureRenderComponent(region, RenderPass.WORLD))
+        .with(HealthComponent.class, new HealthComponent(30))
+        .with(Collider.class, new BoxCollider(position, 0, 0, 16, 16));
+world.add(enemy);
+```
 
 ## Modules
 
-This is a Maven reactor project targeting Java 21, using libGDX 1.14.0 (LWJGL3), Jackson, and
-JUnit 5.
-
 ```
-demo  ──▶ core            demo    Cave Defense — a bundled reference/example game
-demo  ──▶ tiled           tiled   TMX parsing + rendering  (com.cryptroot.tiled)
-tiled ──▶ core            core    Engine framework          (com.cryptroot.core)
+demo        ──▶ core     demo        Cave Defense — bundled reference/example game
+demo        ──▶ tiled    tiled       TMX parsing + rendering   (com.cryptroot.tiled)
+tiled       ──▶ core     core        Engine framework          (com.cryptroot.core)
+performance ──▶ core     performance Benchmark + visual demo of the parallel CollisionSystem
 ```
 
-Dependencies point **inward**: `core` never imports `tiled` or a game, and `tiled` never
-imports a game. A new feature's code belongs in the innermost module that could reuse it.
-`demo` is only one example consumer — a real game (e.g. a sibling project when this repo is
-embedded as a submodule/library) follows the same inward-only dependency direction.
+- **[core](core)** — the framework itself: entities/components, render passes, screens, UI,
+  events, camera, assets, audio, grid + pathfinding, time/scheduling, physics, worker pool,
+  dialogue/story/i18n.
+- **[tiled](tiled)** — Tiled map editor support: TMX parsing (CSV / base64 + gzip / zlib),
+  orthogonal tile-layer rendering, object-layer → entity spawning, tile ↔ world math.
+- **[demo](demo)** — "Cave Defense", a small example game that exercises the framework.
+- **[performance](performance)** — a benchmark and visual showcase of `core`'s
+  `WorkerPool`-backed parallel collision detection.
 
-- **[core](core)** — the engine framework. ECS-lite entity/component system, render pipeline,
-  screens, a ~40-widget UI toolkit, event bus, camera controls, asset management, grid geometry,
-  A* pathfinding, timers/cadences/coroutine-like sequencing, dialogue/story/i18n. See
-  [core/CLAUDE.md](core/CLAUDE.md).
-- **[tiled](tiled)** — TMX (Tiled map editor) parsing and rendering: orthogonal tile layers,
-  object-layer → entity spawning, tile-grid math. See [tiled/CLAUDE.md](tiled/CLAUDE.md).
-- **[demo](demo)** — a bundled reference/example consumer of the framework (units, balance,
-  placement rules, day/phase state machine, screen wiring). It is *not* the only place
-  game-specific logic is allowed to live: if this repo is used as a submodule/library (as in
-  this checkout), your actual game project is where that logic goes — `demo` just shows the
-  pattern. See [demo/CLAUDE.md](demo/CLAUDE.md).
+Dependencies point inward: `core` never depends on `tiled` or on a game, and `tiled` never
+depends on a game.
 
-### Where does new code go?
+## Using it in your own game
 
-**Would another, unrelated game reuse this unchanged?** → `core` (or `tiled` for tile-map
-concerns). **Does it encode game-specific rules, content, or balance?** → the game consuming
-the framework (`demo`, or your real game project if this repo is embedded as a submodule).
+> **The #1 rule when conusming this project:** don't re-invent the framework.
 
-See [CAPABILITIES.md](CAPABILITIES.md) for a full inventory of what already exists, and
-[CLAUDE.md](CLAUDE.md) for the complete set of project conventions and golden rules (no static
-singletons, reuse libGDX math types, one `UpdateComponent.update(delta)` hook, entities as
-component bags, GL-free unit-testable algorithmic code).
+This repository is designed to be consumed as a library or git submodule. Your game depends on
+`core` (and `tiled` if you use Tiled maps) and implements only game-specific logic — unit
+stats, placement rules, balance, screen wiring, what happens on impact. Anything an unrelated
+game would reuse unchanged belongs in the framework instead.
+
+Start with [CAPABILITIES.md](CAPABILITIES.md): it is a full inventory of what already exists
+(including a Unity → Java concept map), and checking it first is the cheapest way to avoid
+re-implementing something the framework already provides.
 
 ## Build & test
 
@@ -70,10 +75,13 @@ mvn -pl demo -am package
 java -cp demo/target/*.jar com.cryptroot.demo.CaveDemoLauncher
 ```
 
+Tests are plain JUnit 5 — no headless GL context and no mocking framework required.
+
 ## Documentation
 
-- [CLAUDE.md](CLAUDE.md) — project-wide conventions and golden rules.
 - [CAPABILITIES.md](CAPABILITIES.md) — inventory of existing framework capabilities (search here
   before building anything new) and a Unity → Java concept map.
+- [CLAUDE.md](CLAUDE.md) — project-wide conventions and golden rules.
 - [core/CLAUDE.md](core/CLAUDE.md), [tiled/CLAUDE.md](tiled/CLAUDE.md),
-  [demo/CLAUDE.md](demo/CLAUDE.md) — per-module rules.
+  [demo/CLAUDE.md](demo/CLAUDE.md), [performance/CLAUDE.md](performance/CLAUDE.md) —
+  per-module rules.
