@@ -65,6 +65,12 @@ Put reusable, game-agnostic engine primitives here. See root [../CAPABILITIES.md
 ## Conventions
 - Reuse libGDX math (`Vector2`, `GridPoint2`, `Color`, `MathUtils`, `Interpolation`).
 - No static singletons — services hang off `GameContext`.
+- **`ResourceManager`/`AudioManager` own every texture, atlas and sound — exclusively.** Nothing
+  outside them may construct or dispose one. If a caller needs a shape the manager doesn't offer
+  (derived, sliced or synthesised textures), add a cached `getOrCreate*`-style method here instead
+  of letting the caller own the resource; `getOrCreateTexture(key, factory)` is the extension point
+  for anything built from a `Pixmap`. A caller-owned `Texture` is a defect (leak + duplicate load)
+  even when it is created only once.
 - Extract render/color math into `static` pure methods (e.g. `WorldHealthBarComponent.barColor`,
   `TintFlashRenderComponent.tintAt`) so it is unit-testable without GL. Tests are plain JUnit 5
   with anonymous no-op `RenderComponent`/`TextureRegion` fakes; do not call `draw()` in tests.

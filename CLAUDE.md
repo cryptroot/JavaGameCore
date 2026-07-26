@@ -53,6 +53,26 @@ Worked examples:
   **the game**.
 
 ## Golden rules
+- **Never bypass a framework owner to "just make it work".** Every GPU/OS resource
+  (`Texture`, `TextureAtlas`, `Pixmap`-derived textures, `Sound`, `Music`, fonts) is created,
+  cached and disposed by the framework service that owns it — `core.resources.ResourceManager`
+  for textures/atlases, `core.audio.AudioManager` for audio, both reached via `GameContext`.
+  Game code must **never** `new Texture(...)` / `Gdx.audio.new*` / hand-roll its own cache,
+  static field, or ad-hoc `dispose()` — not even "once per game", not even as a temporary fix,
+  and not even when the owner lacks the exact API you need.
+  - If the owning service can't express what you need (e.g. slicing an oversized sprite sheet
+    into per-frame textures), **extend the owner in `core`** with a properly cached,
+    owner-disposed API and call that from the game. Adding the missing capability to the
+    framework *is* the fix.
+  - `ResourceManager.getOrCreateTexture(key, factory)` already exists precisely for
+    synthesised/derived textures: build the pixels in the factory, let the manager cache and
+    dispose the result. Reach for it before inventing local ownership.
+  - "It's only created once, so owning it here is fine" is not a justification. Neither is
+    "the manager doesn't cache by prefix". Both are signals to change `core`, not to route
+    around it.
+  - The same applies to every other owner: `World` owns entities, `RenderPipeline` owns draw
+    order, `GameContext` owns services, `TimeScale` owns time. Do not shadow, duplicate or
+    side-step them with local state.
 - **No static singletons.** There is no `GameManager.Instance`. Shared services live on a
   `GameContext` subclass and are passed into screens (see `core.GameContext`,
   `core.screen.BaseGameScreen`). Port Unity singletons to `GameContext` fields.
