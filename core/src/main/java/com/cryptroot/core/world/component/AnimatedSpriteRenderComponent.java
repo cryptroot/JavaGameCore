@@ -30,6 +30,7 @@ public final class AnimatedSpriteRenderComponent implements RenderComponent, Pos
   private final float width;
   private final float height;
   private final RenderPass renderPass;
+  private boolean visible = true;
 
   /**
    * @param animation the flipbook player to draw and drive
@@ -82,12 +83,24 @@ public final class AnimatedSpriteRenderComponent implements RenderComponent, Pos
     return animation.isPlaying();
   }
 
+  /** When {@code false}, {@link #draw} is a no-op. Defaults to {@code true}. */
+  public void setVisible(boolean visible) {
+    this.visible = visible;
+  }
+
+  public boolean isVisible() {
+    return visible;
+  }
+
   // -------------------------------------------------------------------------
   // RenderComponent
   // -------------------------------------------------------------------------
 
   @Override
   public void draw(PolygonSpriteBatch batch) {
+    if (!visible) {
+      return;
+    }
     batch.draw(animation.currentFrame(), x, y, width, height);
   }
 
