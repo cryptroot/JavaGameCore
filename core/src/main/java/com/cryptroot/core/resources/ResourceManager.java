@@ -202,6 +202,18 @@ public final class ResourceManager implements Disposable {
     return textureCache.computeIfAbsent(key, k -> factory.get());
   }
 
+  /**
+   * Returns {@code true} if a texture is already cached under {@code key} (from {@link
+   * #createTexture}, {@link #loadTexture}, or {@link #getOrCreateTexture}), without triggering
+   * creation.
+   *
+   * @param key the classpath or synthesised cache key to check
+   */
+  public boolean hasCachedTexture(String key) {
+    Objects.requireNonNull(key, "key must not be null");
+    return textureCache.containsKey(key);
+  }
+
   // -------------------------------------------------------------------------
   // Disposable
   // -------------------------------------------------------------------------
