@@ -6,6 +6,8 @@ import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Disposable;
 import java.util.HashMap;
 import java.util.Map;
@@ -212,6 +214,35 @@ public final class ResourceManager implements Disposable {
   public boolean hasCachedTexture(String key) {
     Objects.requireNonNull(key, "key must not be null");
     return textureCache.containsKey(key);
+  }
+
+  // -------------------------------------------------------------------------
+  // Static helpers
+  // -------------------------------------------------------------------------
+
+  /** Draw height that keeps {@code region}'s native aspect ratio for a fixed draw width. */
+  public static float heightForWidth(TextureRegion region, float width) {
+    Objects.requireNonNull(region, "region must not be null");
+    return width * region.getRegionHeight() / region.getRegionWidth();
+  }
+
+  /** Draw width that keeps {@code region}'s native aspect ratio for a fixed draw height. */
+  public static float widthForHeight(TextureRegion region, float height) {
+    Objects.requireNonNull(region, "region must not be null");
+    return height * region.getRegionWidth() / region.getRegionHeight();
+  }
+
+  /**
+   * Fits {@code region} within a {@code maxWidth × maxHeight} box, preserving aspect ratio (like
+   * CSS {@code object-fit: contain}). Never upscales beyond the box in either axis.
+   */
+  public static Vector2 fit(TextureRegion region, float maxWidth, float maxHeight) {
+    Objects.requireNonNull(region, "region must not be null");
+    float widthAtMaxHeight = widthForHeight(region, maxHeight);
+    if (widthAtMaxHeight <= maxWidth) {
+      return new Vector2(widthAtMaxHeight, maxHeight);
+    }
+    return new Vector2(maxWidth, heightForWidth(region, maxWidth));
   }
 
   // -------------------------------------------------------------------------
