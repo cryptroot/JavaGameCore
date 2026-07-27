@@ -73,6 +73,12 @@ public final class ResourceManager implements Disposable {
    */
   private final Texture pixelTexture;
 
+  /**
+   * Lazily-loaded classpath resource index (see {@link #manifest()}). {@code null} until first
+   * requested; thereafter the loaded-or-empty manifest, never reloaded.
+   */
+  private ResourceManifest manifest;
+
   // -------------------------------------------------------------------------
   // Construction
   // -------------------------------------------------------------------------
@@ -214,6 +220,24 @@ public final class ResourceManager implements Disposable {
   public boolean hasCachedTexture(String key) {
     Objects.requireNonNull(key, "key must not be null");
     return textureCache.containsKey(key);
+  }
+
+  /**
+   * Returns the classpath {@link ResourceManifest} — the build-generated index that lets callers
+   * <em>list</em> a resource directory (which the raw classpath cannot do).
+   *
+   * <p>Loaded lazily from {@link ResourceManifest#DEFAULT_MANIFEST_PATH} on first request and
+   * cached thereafter. If no manifest was generated (e.g. an IDE build that skips the Maven
+   * plugin), this returns {@link ResourceManifest#empty()} rather than failing, so callers such as
+   * {@link FrameSequenceLoader} transparently fall back to probing.
+   *
+   * @return the loaded-or-empty manifest (never {@code null})
+   */
+  public ResourceManifest manifest() {
+    if (manifest == null) {
+      manifest = ResourceManifest.load(ResourceManifest.DEFAULT_MANIFEST_PATH);
+    }
+    return manifest;
   }
 
   // -------------------------------------------------------------------------

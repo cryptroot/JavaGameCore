@@ -7,21 +7,25 @@ import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.cryptroot.core.concurrent.TaskGate;
 import com.cryptroot.core.concurrent.WorkerPool;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 /**
  * Loads a flipbook animation from a directory of individually-numbered frame images — {@code
  * <directory>/1.png}, {@code <directory>/2.png}, … — into a playback-ordered {@link TextureRegion}
- * array. The frame count is discovered from the directory contents (probing for the next numbered
- * file) rather than hard-coded, so adding or removing frames on disk needs no code change.
+ * array. The frame set is discovered from the directory contents rather than hard-coded, so adding
+ * or removing frames on disk needs no code change.
  *
- * <h3>Why not list the directory?</h3>
+ * <h3>How the directory is listed</h3>
  *
- * <p>Frames are served from the classpath ({@code Gdx.files.classpath}), and libGDX cannot list a
- * classpath directory (it throws), so the frame count is found by probing {@code 1.png}, {@code
- * 2.png}, … until the next file is absent. Frames must therefore be numbered contiguously from
- * {@code 1}.
+ * <p>Frames are served from the classpath ({@code Gdx.files.classpath}), which cannot be enumerated
+ * directly. When a build-time {@link ResourceManifest} is present (the normal case), the frame
+ * files are read straight from it — any naming scheme works and the frames play in {@link
+ * ResourceManifest#NATURAL_ORDER}, so contiguous numbering is no longer required. When no manifest
+ * covers the directory (e.g. an IDE build that skipped the generator), the loader falls back to
+ * probing {@code 1.png}, {@code 2.png}, … until the next file is absent; that legacy path still
+ * requires frames numbered contiguously from {@code 1}.
  *
  * <h3>Asynchronous loading</h3>
  *
@@ -74,23 +78,22 @@ public final class FrameSequenceLoader {
    * to complete the load later on the render thread. Does not block.
    *
    * @param resources the manager that will own the frame textures (accessed only by {@link
-   *     Pending#resolve()}, on the render thread)
+   *     Pending#resolve()}, on the render thread); also supplies the {@link ResourceManifest} used
+   *     to list the directory's frames
    * @param pool the worker pool the per-frame {@link Pixmap} decode is forked onto
-   * @param directory classpath directory holding {@code 1.png}, {@code 2.png}, … e.g. {@code
-   *     "assets/sprites/DogWalk"}
+   * @param directory classpath directory holding the frame images, e.g. {@code
+   *     "assets/sprites/Animation"}
    * @return a {@link Pending} whose {@link Pending#resolve()} yields the frames in playback order
-   * @throws IllegalArgumentException if {@code directory} contains no {@code 1.png}
+   * @throws IllegalArgumentException if the directory is not listed in the manifest and contains no
+   *     {@code 1.png} to probe
    */
   public static Pending loadAsync(ResourceManager resources, WorkerPool pool, String directory) {
     Objects.requireNonNull(resources, "resources must not be null");
     Objects.requireNonNull(pool, "pool must not be null");
     Objects.requireNonNull(directory, "directory must not be null");
 
-    int frameCount = discoverFrameCount(directory);
-    String[] frameKeys = new String[frameCount];
-    for (int i = 0; i < frameCount; i++) {
-      frameKeys[i] = framePath(directory, i + 1);
-    }
+    String[] frameKeys = resolveFrameKeys(resources, directory);
+    int frameCount = frameKeys.length;
 
     // If the last frame is already cached, assume the whole directory is loaded (it is always
     // loaded as a unit) and skip the decode; resolve() will just re-wrap the cached textures.
@@ -104,10 +107,36 @@ public final class FrameSequenceLoader {
   }
 
   /**
-   * Probes {@code directory/1.png}, {@code directory/2.png}, … and returns how many contiguous
-   * frames exist.
+   * Resolves the ordered classpath keys of a directory's frames, preferring the build-time {@link
+   * ResourceManifest} and falling back to probing {@code 1.png}, {@code 2.png}, … when the manifest
+   * does not cover the directory.
    */
-  private static int discoverFrameCount(String directory) {
+  private static String[] resolveFrameKeys(ResourceManager resources, String directory) {
+    List<String> listed = resources.manifest().list(directory);
+    if (!listed.isEmpty()) {
+      List<String> frames = new ArrayList<>(listed.size());
+      for (String path : listed) {
+        if (path.endsWith(".png")) {
+          frames.add(path);
+        }
+      }
+      if (!frames.isEmpty()) {
+        return frames.toArray(new String[0]);
+      }
+    }
+    int frameCount = probeFrameCount(directory);
+    String[] frameKeys = new String[frameCount];
+    for (int i = 0; i < frameCount; i++) {
+      frameKeys[i] = framePath(directory, i + 1);
+    }
+    return frameKeys;
+  }
+
+  /**
+   * Probes {@code directory/1.png}, {@code directory/2.png}, … and returns how many contiguous
+   * frames exist. Used only as a fallback when no {@link ResourceManifest} lists the directory.
+   */
+  private static int probeFrameCount(String directory) {
     int count = 0;
     while (Gdx.files.classpath(framePath(directory, count + 1)).exists()) {
       count++;

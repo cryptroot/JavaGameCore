@@ -26,6 +26,13 @@
         <jackson.version>2.17.0</jackson.version>
         <luaj.version>3.0.1</luaj.version>
         <junit.version>5.11.4</junit.version>
+
+        <!-- Build-time resource manifest (see com.cryptroot.core.resources.ResourceManifest):
+             the classpath sub-directory to index and the manifest file to write, both relative
+             to each module's build output. Modules that declare exec-maven-plugin inherit the
+             generate-resource-manifest execution below; override these to index a different tree. -->
+        <resourceManifest.sourceDir>assets</resourceManifest.sourceDir>
+        <resourceManifest.output>assets/manifest.txt</resourceManifest.output>
     </properties>
 
     <dependencyManagement>
@@ -111,6 +118,33 @@
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-install-plugin</artifactId>
                     <version>3.1.3</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>3.5.0</version>
+                    <executions>
+                        <!-- Generates the classpath resource manifest so runtime code can list
+                             asset directories (ResourceManifest) instead of probing numbered files.
+                             Bound to process-classes so the manifest lands in target/classes and is
+                             packaged like any other resource. A module whose ${resourceManifest.sourceDir}
+                             directory is absent is skipped, so this is harmless where unused. -->
+                        <execution>
+                            <id>generate-resource-manifest</id>
+                            <phase>process-classes</phase>
+                            <goals>
+                                <goal>java</goal>
+                            </goals>
+                            <configuration>
+                                <mainClass>com.cryptroot.core.resources.ResourceManifestGenerator</mainClass>
+                                <arguments>
+                                    <argument>${project.build.outputDirectory}</argument>
+                                    <argument>${resourceManifest.sourceDir}</argument>
+                                    <argument>${resourceManifest.output}</argument>
+                                </arguments>
+                            </configuration>
+                        </execution>
+                    </executions>
                 </plugin>
                 <plugin>
                     <groupId>com.diffplug.spotless</groupId>
