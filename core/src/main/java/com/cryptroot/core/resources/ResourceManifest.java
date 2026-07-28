@@ -6,7 +6,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -30,8 +29,11 @@ import java.util.Set;
  *
  * <p>{@link ResourceManifest} replaces that guesswork with a manifest generated at build time by
  * {@link ResourceManifestGenerator}: a flat, newline-separated listing of every packaged resource
- * path. Loaded once at runtime, it answers {@link #list(String)} and {@link #contains(String)} in
- * memory — effectively "resource reflection" over the classpath.
+ * path. Loaded once at runtime, it reconstructs the directory tree in memory and answers listing
+ * queries — {@link #list(String) files}, {@link #listSubdirectories(String) sub-directories},
+ * {@link #children(String) both}, {@link #descendantFiles(String) the whole subtree}, {@link
+ * #directories() every directory}, and {@link #contains(String)} — effectively "resource
+ * reflection" over the classpath.
  *
  * <h3>Manifest format</h3>
  *
@@ -66,13 +68,24 @@ public final class ResourceManifest {
   /** Same paths as a set, for O(1) {@link #contains(String)}. */
   private final Set<String> pathSet;
 
-  /** Directory (path up to the last {@code /}) → its immediate file children, in sorted order. */
-  private final Map<String, List<String>> byDirectory;
+  /**
+   * The directory tree: every indexed directory — including intermediate directories that hold no
+   * files of their own (e.g. {@code assets/sprites/Human/Idle}) and the synthetic root {@code ""} —
+   * mapped to its immediate children, split into files and sub-directories. Built in a single pass
+   * and the single source of truth for every listing query.
+   */
+  private final Map<String, DirEntry> tree;
+
+  /**
+   * A directory's immediate children, split by kind. Both lists hold full resource paths, are
+   * immutable, and are {@link #NATURAL_ORDER}-sorted.
+   */
+  private record DirEntry(List<String> files, List<String> subdirs) {}
 
   private ResourceManifest(List<String> sortedNormalizedPaths) {
     this.paths = List.copyOf(sortedNormalizedPaths);
     this.pathSet = new HashSet<>(sortedNormalizedPaths);
-    this.byDirectory = indexByDirectory(sortedNormalizedPaths);
+    this.tree = indexTree(sortedNormalizedPaths);
   }
 
   // -------------------------------------------------------------------------
@@ -187,10 +200,94 @@ public final class ResourceManifest {
    * @return an unmodifiable, naturally-ordered list of full child resource paths
    */
   public List<String> list(String directory) {
+    DirEntry entry = entry(directory);
+    return entry == null ? List.of() : entry.files();
+  }
+
+  /**
+   * Lists the immediate <em>sub-directory</em> children of {@code directory} (directories one
+   * segment deeper whose parent is exactly {@code directory}), in {@link #NATURAL_ORDER}. This is
+   * the directory-listing counterpart to {@link #list(String)}, which returns only file children;
+   * unlike {@code list}, it also reports directories that contain no files of their own but do have
+   * deeper descendants (e.g. {@code assets/sprites/Human/Idle} → {@code Sit}, {@code Stand}).
+   *
+   * <p>Returns an empty list if the directory is unknown to this manifest (or has no
+   * sub-directories), so a caller can treat "not indexed" and "indexed but leaf" alike.
+   *
+   * @param directory directory path, with or without a trailing slash, e.g. {@code
+   *     "assets/sprites/Human/Idle"}
+   * @return an unmodifiable, naturally-ordered list of full child directory paths
+   */
+  public List<String> listSubdirectories(String directory) {
+    DirEntry entry = entry(directory);
+    return entry == null ? List.of() : entry.subdirs();
+  }
+
+  /**
+   * Lists <em>all</em> immediate children of {@code directory} — its file children and its
+   * sub-directory children merged into one {@link #NATURAL_ORDER}-sorted list. Equivalent to
+   * concatenating {@link #list(String)} and {@link #listSubdirectories(String)} and re-sorting;
+   * the natural, provider-agnostic "what's directly under this folder?" query.
+   *
+   * <p>Returns an empty list if the directory is unknown to this manifest.
+   *
+   * @param directory directory path, with or without a trailing slash
+   * @return an unmodifiable, naturally-ordered list of full child paths (files and directories)
+   */
+  public List<String> children(String directory) {
+    DirEntry entry = entry(directory);
+    if (entry == null) {
+      return List.of();
+    }
+    List<String> all = new ArrayList<>(entry.files().size() + entry.subdirs().size());
+    all.addAll(entry.files());
+    all.addAll(entry.subdirs());
+    all.sort(NATURAL_ORDER);
+    return List.copyOf(all);
+  }
+
+  /**
+   * Walks the whole subtree rooted at {@code directory} and returns every <em>file</em> at or below
+   * it, at any depth, in {@link #NATURAL_ORDER}. This is the recursive counterpart to {@link
+   * #list(String)}: {@code list} stops at direct children, this descends the entire tree.
+   *
+   * <p>Passing the empty string (the root) returns every indexed path — i.e. {@link #paths()}.
+   * Returns an empty list if no file lives under {@code directory}.
+   *
+   * @param directory directory path, with or without a trailing slash, e.g. {@code
+   *     "assets/sprites/Human"}
+   * @return an unmodifiable, naturally-ordered list of full descendant file paths
+   */
+  public List<String> descendantFiles(String directory) {
     Objects.requireNonNull(directory, "directory must not be null");
     String dir = normalizeDirectory(directory);
-    List<String> children = byDirectory.get(dir);
-    return children == null ? List.of() : Collections.unmodifiableList(children);
+    if (dir.isEmpty()) {
+      return paths;
+    }
+    // paths is already NATURAL_ORDER-sorted, so the filtered view stays sorted. The trailing
+    // slash on the prefix keeps "a/b" from also matching a sibling like "a/bc/1.png".
+    String prefix = dir + "/";
+    List<String> out = new ArrayList<>();
+    for (String path : paths) {
+      if (path.startsWith(prefix)) {
+        out.add(path);
+      }
+    }
+    return List.copyOf(out);
+  }
+
+  /**
+   * Returns every directory the manifest knows about — each directory that contains a file or a
+   * sub-directory, at any depth — in {@link #NATURAL_ORDER}. Excludes the synthetic root {@code ""}.
+   * Useful for driving a full tree walk without probing.
+   *
+   * @return an unmodifiable, naturally-ordered list of full directory paths
+   */
+  public List<String> directories() {
+    List<String> dirs = new ArrayList<>(tree.keySet());
+    dirs.remove("");
+    dirs.sort(NATURAL_ORDER);
+    return List.copyOf(dirs);
   }
 
   /** Returns every indexed resource path, naturally ordered and unmodifiable. */
@@ -202,13 +299,43 @@ public final class ResourceManifest {
   // Internals
   // -------------------------------------------------------------------------
 
-  private static Map<String, List<String>> indexByDirectory(List<String> sortedPaths) {
-    // sortedPaths is already NATURAL_ORDER-sorted, so each directory's list comes out ordered.
-    Map<String, List<String>> index = new LinkedHashMap<>();
+  /** Looks up a directory's children, normalizing the argument first; {@code null} if unknown. */
+  private DirEntry entry(String directory) {
+    Objects.requireNonNull(directory, "directory must not be null");
+    return tree.get(normalizeDirectory(directory));
+  }
+
+  /**
+   * Builds the directory tree in one pass. Each path's ancestor chain is walked once: every {@code
+   * /} marks a parent→sub-directory edge (a file at {@code a/b/c/1.png} contributes {@code ""→a},
+   * {@code a→a/b}, {@code a/b→a/b/c}), and the segment after the last {@code /} is filed as a file
+   * child of its enclosing directory. This is the sole definition of "directory" in the class, so
+   * file listings and sub-directory listings can never disagree.
+   *
+   * <p>File lists inherit {@code sortedPaths}' order (already {@link #NATURAL_ORDER}); sub-directory
+   * sets are de-duplicated and sorted explicitly.
+   */
+  private static Map<String, DirEntry> indexTree(List<String> sortedPaths) {
+    Map<String, List<String>> files = new LinkedHashMap<>();
+    Map<String, Set<String>> subdirs = new LinkedHashMap<>();
     for (String path : sortedPaths) {
-      int slash = path.lastIndexOf('/');
-      String dir = slash < 0 ? "" : path.substring(0, slash);
-      index.computeIfAbsent(dir, d -> new ArrayList<>()).add(path);
+      String parent = "";
+      for (int slash = path.indexOf('/'); slash >= 0; slash = path.indexOf('/', slash + 1)) {
+        String child = path.substring(0, slash);
+        subdirs.computeIfAbsent(parent, p -> new LinkedHashSet<>()).add(child);
+        parent = child;
+      }
+      // `parent` is now the file's enclosing directory (root "" for a slash-less path).
+      files.computeIfAbsent(parent, d -> new ArrayList<>()).add(path);
+    }
+    Set<String> dirs = new LinkedHashSet<>(files.keySet());
+    dirs.addAll(subdirs.keySet());
+    Map<String, DirEntry> index = new LinkedHashMap<>();
+    for (String dir : dirs) {
+      List<String> f = files.getOrDefault(dir, List.of());
+      List<String> s = new ArrayList<>(subdirs.getOrDefault(dir, Set.of()));
+      s.sort(NATURAL_ORDER);
+      index.put(dir, new DirEntry(List.copyOf(f), List.copyOf(s)));
     }
     return index;
   }

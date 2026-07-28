@@ -53,6 +53,55 @@ class ResourceManifestTest {
     assertTrue(sample().list("assets/sprites/DoesNotExist").isEmpty());
   }
 
+  private static ResourceManifest nested() {
+    return ResourceManifest.of(
+        List.of(
+            "assets/sprites/Human/Idle/Stand/1.png",
+            "assets/sprites/Human/Idle/Stand/2.png",
+            "assets/sprites/Human/Idle/Sit/1.png",
+            "assets/sprites/Dog/DogWalk/1.png",
+            "assets/root.png"));
+  }
+
+  @Test
+  void listSubdirectoriesReturnsImmediateChildDirs() {
+    assertEquals(
+        List.of("assets/sprites/Dog", "assets/sprites/Human"),
+        nested().listSubdirectories("assets/sprites"));
+  }
+
+  @Test
+  void listSubdirectoriesReportsDirsWithNoDirectFiles() {
+    // "assets/sprites/Human/Idle" holds no files of its own — only Sit/ and Stand/.
+    assertTrue(nested().list("assets/sprites/Human/Idle").isEmpty());
+    assertEquals(
+        List.of("assets/sprites/Human/Idle/Sit", "assets/sprites/Human/Idle/Stand"),
+        nested().listSubdirectories("assets/sprites/Human/Idle"));
+  }
+
+  @Test
+  void listSubdirectoriesToleratesTrailingAndLeadingSlash() {
+    ResourceManifest m = nested();
+    assertEquals(
+        m.listSubdirectories("assets/sprites"), m.listSubdirectories("assets/sprites/"));
+    assertEquals(
+        m.listSubdirectories("assets/sprites"), m.listSubdirectories("/assets/sprites"));
+  }
+
+  @Test
+  void listSubdirectoriesOfLeafOrUnknownDirIsEmpty() {
+    ResourceManifest m = nested();
+    assertTrue(m.listSubdirectories("assets/sprites/Human/Idle/Sit").isEmpty()); // leaf
+    assertTrue(m.listSubdirectories("assets/sprites/Nope").isEmpty()); // unknown
+  }
+
+  @Test
+  void listSubdirectoriesDoesNotRecordSelfEdgeForRootLevelFiles() {
+    // "assets/root.png" contributes only root→assets, never assets→assets.
+    assertEquals(List.of("assets"), nested().listSubdirectories(""));
+    assertFalse(nested().listSubdirectories("assets").contains("assets"));
+  }
+
   @Test
   void containsNormalizesSeparatorsAndLeadingSlash() {
     ResourceManifest m = sample();
