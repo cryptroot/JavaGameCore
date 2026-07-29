@@ -226,8 +226,8 @@ public final class ResourceManifest {
   /**
    * Lists <em>all</em> immediate children of {@code directory} — its file children and its
    * sub-directory children merged into one {@link #NATURAL_ORDER}-sorted list. Equivalent to
-   * concatenating {@link #list(String)} and {@link #listSubdirectories(String)} and re-sorting;
-   * the natural, provider-agnostic "what's directly under this folder?" query.
+   * concatenating {@link #list(String)} and {@link #listSubdirectories(String)} and re-sorting; the
+   * natural, provider-agnostic "what's directly under this folder?" query.
    *
    * <p>Returns an empty list if the directory is unknown to this manifest.
    *
@@ -278,8 +278,8 @@ public final class ResourceManifest {
 
   /**
    * Returns every directory the manifest knows about — each directory that contains a file or a
-   * sub-directory, at any depth — in {@link #NATURAL_ORDER}. Excludes the synthetic root {@code ""}.
-   * Useful for driving a full tree walk without probing.
+   * sub-directory, at any depth — in {@link #NATURAL_ORDER}. Excludes the synthetic root {@code
+   * ""}. Useful for driving a full tree walk without probing.
    *
    * @return an unmodifiable, naturally-ordered list of full directory paths
    */
@@ -312,8 +312,8 @@ public final class ResourceManifest {
    * child of its enclosing directory. This is the sole definition of "directory" in the class, so
    * file listings and sub-directory listings can never disagree.
    *
-   * <p>File lists inherit {@code sortedPaths}' order (already {@link #NATURAL_ORDER}); sub-directory
-   * sets are de-duplicated and sorted explicitly.
+   * <p>File lists inherit {@code sortedPaths}' order (already {@link #NATURAL_ORDER});
+   * sub-directory sets are de-duplicated and sorted explicitly.
    */
   private static Map<String, DirEntry> indexTree(List<String> sortedPaths) {
     Map<String, List<String>> files = new LinkedHashMap<>();

@@ -82,10 +82,8 @@ class ResourceManifestTest {
   @Test
   void listSubdirectoriesToleratesTrailingAndLeadingSlash() {
     ResourceManifest m = nested();
-    assertEquals(
-        m.listSubdirectories("assets/sprites"), m.listSubdirectories("assets/sprites/"));
-    assertEquals(
-        m.listSubdirectories("assets/sprites"), m.listSubdirectories("/assets/sprites"));
+    assertEquals(m.listSubdirectories("assets/sprites"), m.listSubdirectories("assets/sprites/"));
+    assertEquals(m.listSubdirectories("assets/sprites"), m.listSubdirectories("/assets/sprites"));
   }
 
   @Test
