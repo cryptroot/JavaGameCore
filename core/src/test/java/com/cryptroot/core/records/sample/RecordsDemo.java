@@ -22,7 +22,7 @@ import java.util.Map;
  * <p>Deliberately GL-free — no {@code GameContext}, no batch, no window — so it runs anywhere:
  *
  * <pre>{@code
- * mvn -f records/pom.xml -q exec:java -Dexec.mainClass=com.cryptroot.core.records.sample.RecordsDemo
+ * mvn -pl core -q test -Dtest=com.cryptroot.core.records.sample.RecordsDemoTest
  * }</pre>
  */
 public final class RecordsDemo {

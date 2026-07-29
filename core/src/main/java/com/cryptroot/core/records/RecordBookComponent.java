@@ -87,7 +87,10 @@ public final class RecordBookComponent implements EntityComponent, RecordLedger 
     long current =
         aggregation.combine(
             stored == null ? OptionalLong.empty() : OptionalLong.of(stored), observation);
-    if (stored != null && current == previous) {
+    if (current == previous) {
+      if (stored == null) {
+        records.put(key, current);
+      }
       return;
     }
     records.put(key, current);

@@ -174,11 +174,6 @@ public record RecordDefinition(
     }
 
     /**
-     * Builds the definition, deriving its key from the components added so far.
-     *
-     * @throws IllegalArgumentException if no component was added
-     */
-    /**
      * Sets how repeated observations combine. Omit the call for a plain counter.
      *
      * @throws NullPointerException if {@code aggregation} is {@code null}
@@ -188,6 +183,11 @@ public record RecordDefinition(
       return this;
     }
 
+    /**
+     * Builds the definition, deriving its key from the components added so far.
+     *
+     * @throws IllegalArgumentException if no component was added
+     */
     public RecordDefinition build() {
       return new RecordDefinition(
           RecordKey.of(components.values()), name, description, aggregation, components);

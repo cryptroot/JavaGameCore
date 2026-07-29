@@ -1,5 +1,6 @@
 package com.cryptroot.core.records.sample;
 
+import com.cryptroot.core.records.RecordBookComponent;
 import com.cryptroot.core.records.RecordComponent;
 import com.cryptroot.core.records.RecordDimension;
 

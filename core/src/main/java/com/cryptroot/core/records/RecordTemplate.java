@@ -21,7 +21,7 @@ import java.util.function.Function;
  *     .build();
  *
  * RecordKey railgun = weaponKills.define(keeper, "railgun");
- * book.increment(railgun);
+ * book.record(railgun);
  * }</pre>
  *
  * <p>A member is an ordinary {@link RecordDefinition}, so unlike a hand-rolled {@code "skill_" +
