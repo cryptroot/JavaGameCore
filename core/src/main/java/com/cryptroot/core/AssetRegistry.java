@@ -102,8 +102,21 @@ public final class AssetRegistry implements Disposable {
     };
   }
 
+  /**
+   * Returns a {@link UiSkin} drawing text at the given size, with the standard border slices and
+   * {@link com.cryptroot.core.ui.UiTheme#standard() standard theme}.
+   *
+   * <p>This is how a widget gets a font size other than {@link FontSize#BODY} without callers
+   * assembling a {@code UiSkin} by hand — which is what previously forced data rows rendered as
+   * buttons to use the 34px body face while their surrounding labels used the 22px hint face.
+   */
+  public UiSkin skin(FontSize size) {
+    return new UiSkin(lightBorder, selectedBorder, font(size));
+  }
+
+  /** Shorthand for {@code skin(FontSize.BODY)}. */
   public UiSkin defaultSkin() {
-    return new UiSkin(lightBorder, selectedBorder, fontBody);
+    return skin(FontSize.BODY);
   }
 
   /**

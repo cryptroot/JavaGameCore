@@ -2,8 +2,10 @@ package com.cryptroot.core.ui;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.utils.Align;
 import com.cryptroot.core.event.Signal0;
+import com.cryptroot.core.ui.layout.Insets;
 import java.util.Objects;
 
 /**
@@ -84,12 +86,8 @@ public class CloseablePanel extends Panel {
   private final PixelBorder divider;
   private final Button closeButton;
 
-  // Stored for getContentBounds() and doBoundedLayout() —
-  // values are set once at construction and do not change.
-  private final float px;
-  private final float py;
-  private final float pw;
-  private final float ph;
+  /** Scratch for measuring the close button, so layout allocates nothing. */
+  private final Vector2 scratch = new Vector2();
 
   // -------------------------------------------------------------------------
   // Constructor
@@ -112,16 +110,11 @@ public class CloseablePanel extends Panel {
     super(Objects.requireNonNull(pixel, "pixel must not be null"), x, y, w, h);
     Objects.requireNonNull(skin, "skin must not be null");
     Objects.requireNonNull(title, "title must not be null");
-    this.px = x;
-    this.py = y;
-    this.pw = w;
-    this.ph = h;
 
     titleBarBg = new PixelRect(pixel, TITLE_BAR_BG_COLOR);
-    titleLabel = new TextLabel(skin.font(), title, 0f, 0f, TITLE_COLOR);
+    titleLabel = new TextLabel(skin.font(), title, TITLE_COLOR.cpy());
     divider = new PixelBorder(pixel, 1f, DIVIDER_COLOR);
-    // Close button constructed at placeholder (0, 0); repositioned in doBoundedLayout().
-    closeButton = new Button(skin, "Close", 0f, 0f);
+    closeButton = new Button(skin, "Close");
     closeButton.setLabelColour(Color.BLACK.cpy());
 
     // Wire close button → onClose signal → hide this panel.
@@ -159,19 +152,17 @@ public class CloseablePanel extends Panel {
   }
 
   /**
-   * Returns the inset rectangle available for content widgets — the area below the title bar with
-   * {@value #CONTENT_PAD}px padding on all sides.
+   * The title bar plus {@value #CONTENT_PAD} units of padding on every side.
    *
-   * <p>The returned rectangle is freshly allocated on every call; it is safe to store without
-   * aliasing concerns.
+   * <p>Declaring the chrome here is all that is needed for {@link #getContentBounds()} and {@link
+   * #preferredSize} to both account for the title bar.
    */
+  public static final Insets CHROME =
+      new Insets(CONTENT_PAD, CONTENT_PAD, CONTENT_PAD, CONTENT_PAD + TITLE_BAR_H);
+
   @Override
-  public Rectangle getContentBounds() {
-    return new Rectangle(
-        px + CONTENT_PAD,
-        py + CONTENT_PAD,
-        pw - CONTENT_PAD * 2f,
-        ph - TITLE_BAR_H - CONTENT_PAD * 2f);
+  protected Insets chromeInsets() {
+    return CHROME;
   }
 
   // -------------------------------------------------------------------------
@@ -182,33 +173,25 @@ public class CloseablePanel extends Panel {
   protected void doBoundedLayout() {
     super.doBoundedLayout();
 
-    float titleBarBottomY = py + ph - TITLE_BAR_H;
-    float titleBarCenterY = py + ph - TITLE_BAR_H / 2f;
+    float titleBarBottomY = frame.y + frame.height - TITLE_BAR_H;
 
-    // Title bar background
-    titleBarBg.setBounds(px, titleBarBottomY, pw, TITLE_BAR_H);
+    titleBarBg.setBounds(frame.x, titleBarBottomY, frame.width, TITLE_BAR_H);
 
-    // Title label — baseline roughly centred in the title bar
-    titleLabel.setPosition(px + TITLE_PAD_H, titleBarCenterY + 10f);
+    // Title text: vertically centred in the bar by the shared metric helper rather than a
+    // hand-tuned baseline nudge.
+    titleLabel.setBounds(
+        frame.x + TITLE_PAD_H, titleBarBottomY, frame.width - TITLE_PAD_H, TITLE_BAR_H);
+    titleLabel.setBoxAlign(Align.left | Align.center);
 
-    // Divider line at the bottom edge of the title bar
-    divider.setBounds(px, titleBarBottomY, pw, 1f);
+    divider.setBounds(frame.x, titleBarBottomY, frame.width, 1f);
 
-    // Close button: reset to the placeholder origin so every layout pass
-    // measures from (0, 0) — without this the second call (fired by the
-    // initial LibGDX resize event) would measure from the already-placed
-    // position and push the button to (0, 0) / off-screen.
-    closeButton.setPosition(0f, 0f);
-    closeButton.layout();
-    Rectangle cb = closeButton.getBounds(); // measured at textX=0, textY=0
-    // cb.x = textX - PAD_H = -PAD_H  →  textX_new = targetBoundsX - cb.x
-    float targetBoundsX = px + pw - cb.width - CLOSE_PAD;
-    float targetTextX = targetBoundsX - cb.x;
-    // cb.y = textY - glH - PAD_V_BOT  →  textY_new = targetBoundsY - cb.y
-    float targetBoundsY = titleBarCenterY - cb.height / 2f;
-    float targetTextY = targetBoundsY - cb.y;
-    closeButton.setPosition(targetTextX, targetTextY);
-    // CompositeWidget.layout() will call closeButton.layout() again after
-    // doBoundedLayout() returns, applying the new position.
+    // Close button: ask it how big it wants to be, then place that box directly. No need to
+    // reverse-engineer the button's internal padding to work back from a text baseline.
+    closeButton.preferredSize(scratch);
+    closeButton.setBounds(
+        frame.x + frame.width - scratch.x - CLOSE_PAD,
+        titleBarBottomY + (TITLE_BAR_H - scratch.y) / 2f,
+        scratch.x,
+        scratch.y);
   }
 }

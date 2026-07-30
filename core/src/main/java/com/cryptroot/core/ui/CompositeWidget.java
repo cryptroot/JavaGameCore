@@ -130,6 +130,21 @@ public abstract class CompositeWidget implements UiWidget {
     for (UiWidget c : children) c.updateHover(worldX, worldY);
   }
 
+  /** Forwards to all children so an occluded subtree clears its hover state in one call. */
+  @Override
+  public void clearHover() {
+    for (UiWidget c : children) c.clearHover();
+  }
+
+  /** Returns {@code true} if any child contains the point. Side-effect-free. */
+  @Override
+  public boolean contains(float worldX, float worldY) {
+    for (int i = children.size() - 1; i >= 0; i--) {
+      if (children.get(i).contains(worldX, worldY)) return true;
+    }
+    return false;
+  }
+
   /**
    * Tests children in reverse-insertion order (last added = topmost). Subclasses may override
    * entirely to do a composite-level bounds check.

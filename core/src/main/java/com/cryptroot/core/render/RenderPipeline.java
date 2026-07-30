@@ -31,8 +31,11 @@ import java.util.Objects;
  *   <li>{@link WorldRenderSystem#draw}: BACKGROUND + WORLD (Y-sorted) + outline blit
  *   <li>{@link NormalMappedRenderSystem}: NM pass (if entities present)
  *   <li>{@link WorldRenderSystem#drawForeground}: FOREGROUND_WORLD
- *   <li>UI pass ({@link UiLayer#draw})
  * </ol>
+ *
+ * <p>Screen-space UI is <em>not</em> part of this sequence — {@link
+ * com.cryptroot.core.screen.BaseScreen} draws its {@link UiLayer} after {@code render} returns, so
+ * that UI-only screens and world screens share one code path for it.
  *
  * <p>One instance per scene. Call {@link #reset()} when the screen hides.
  */
@@ -102,13 +105,18 @@ public final class RenderPipeline implements Disposable {
   }
 
   /**
-   * Executes the full render pass: FBO capture → world draw → NM pass (if needed) → foreground →
-   * UI.
+   * Executes the full world render pass: FBO capture → world draw → NM pass (if needed) →
+   * foreground.
+   *
+   * <p>Screen-space UI is deliberately <em>not</em> drawn here. {@link
+   * com.cryptroot.core.screen.BaseScreen} owns the UI pass and runs it after this method returns,
+   * so that the UI is always drawn with the camera it was laid out in regardless of whether a
+   * screen uses this pipeline at all. See {@link
+   * com.cryptroot.core.ui.UiLayer#render(PolygonSpriteBatch, SelectionOutlineRenderer)}.
    *
    * @param worldCamera the active world camera (may differ from the UI camera)
-   * @param uiLayer the UI layer to draw after the world pass
    */
-  public void render(World world, OrthographicCamera worldCamera, UiLayer uiLayer) {
+  public void render(World world, OrthographicCamera worldCamera) {
     PolygonSpriteBatch batch = context.batch();
     SelectionOutlineRenderer sor = context.outlineRenderer();
 
@@ -128,12 +136,6 @@ public final class RenderPipeline implements Disposable {
       nmRenderSystem.draw(
           world, batch, context.normalMappedRenderer(), worldCamera.combined, lights);
     }
-
-    // UI pass
-    batch.setProjectionMatrix(context.camera().combined);
-    batch.begin();
-    uiLayer.draw(batch);
-    batch.end();
   }
 
   /**

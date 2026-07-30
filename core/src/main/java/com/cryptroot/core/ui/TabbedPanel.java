@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.cryptroot.core.event.Signal;
+import com.cryptroot.core.ui.layout.Insets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -84,6 +85,10 @@ public final class TabbedPanel extends Panel {
 
   // Parallel lists — index = tab index.
   private final List<TabButton> tabButtons = new ArrayList<>();
+
+  /** Reused output for {@link #tabRectFor}, so a layout pass allocates nothing. */
+  private final Rectangle tabRectScratch = new Rectangle();
+
   private final List<List<UiWidget>> tabContents = new ArrayList<>();
 
   private int activeTab = 0;
@@ -198,31 +203,49 @@ public final class TabbedPanel extends Panel {
   // -------------------------------------------------------------------------
 
   /**
-   * Returns the inset rectangle available for content widgets — excludes the tab strip height and
-   * the content padding on all sides.
+   * The content padding on all sides, plus the tab strip on whichever edge {@link TabPosition} puts
+   * it.
    *
-   * <p>This rectangle is stable after {@link #layout()} has been called and is freshly allocated on
-   * each invocation (safe to store).
+   * <p>Declaring the chrome here is what makes {@link #getContentBounds()}, {@link
+   * Panel#preferredSize} and {@code Panel.setContent} placement all agree about where the tab strip
+   * is.
    */
   @Override
-  public Rectangle getContentBounds() {
-    float px = getPanelX();
-    float py = getPanelY();
-    float pw = getPanelW();
-    float ph = getPanelH();
+  protected Insets chromeInsets() {
+    return tabPosition == TabPosition.TOP
+        ? new Insets(CONTENT_PAD, CONTENT_PAD, CONTENT_PAD, CONTENT_PAD + TAB_HEIGHT)
+        : new Insets(CONTENT_PAD, CONTENT_PAD + TAB_HEIGHT, CONTENT_PAD, CONTENT_PAD);
+  }
 
-    float cx = px + CONTENT_PAD;
-    float cw = pw - CONTENT_PAD * 2f;
-
-    float cy, ch;
-    if (tabPosition == TabPosition.TOP) {
-      cy = py + CONTENT_PAD;
-      ch = ph - TAB_HEIGHT - CONTENT_PAD * 2f;
-    } else { // BOTTOM
-      cy = py + TAB_HEIGHT + CONTENT_PAD;
-      ch = ph - TAB_HEIGHT - CONTENT_PAD * 2f;
+  /**
+   * The rectangle for tab {@code index} of {@code count} tabs in a strip of the given panel
+   * geometry.
+   *
+   * <p>Extracted as a pure static so the even-division arithmetic is unit-testable without GL.
+   *
+   * @return {@code out}, for chaining
+   */
+  public static Rectangle tabRectFor(
+      int index,
+      int count,
+      float panelX,
+      float panelY,
+      float panelW,
+      float panelH,
+      float tabHeight,
+      float gap,
+      boolean atTop,
+      Rectangle out) {
+    if (count <= 0) {
+      throw new IllegalArgumentException("count must be positive, got " + count);
     }
-    return new Rectangle(cx, cy, cw, ch);
+    if (index < 0 || index >= count) {
+      throw new IndexOutOfBoundsException(
+          "index " + index + " out of range for " + count + " tabs");
+    }
+    float tabW = Math.max(0f, (panelW - gap * (count - 1)) / count);
+    float stripY = atTop ? panelY + panelH - tabHeight : panelY;
+    return out.set(panelX + index * (tabW + gap), stripY, tabW, tabHeight);
   }
 
   // -------------------------------------------------------------------------
@@ -233,19 +256,24 @@ public final class TabbedPanel extends Panel {
   protected void doBoundedLayout() {
     super.doBoundedLayout();
 
-    float px = getPanelX();
-    float py = getPanelY();
-    float pw = getPanelW();
-    float ph = getPanelH();
-
-    // Position tab-button rects along the strip edge.
-    if (!tabButtons.isEmpty()) {
-      float tabW = (pw - TAB_GAP * (tabButtons.size() - 1)) / tabButtons.size();
-      float stripY = (tabPosition == TabPosition.TOP) ? py + ph - TAB_HEIGHT : py;
-      for (int i = 0; i < tabButtons.size(); i++) {
-        float tx = px + i * (tabW + TAB_GAP);
-        tabButtons.get(i).setTabBounds(tx, stripY, tabW, TAB_HEIGHT);
-      }
+    // Position tab-button rects along the strip edge, via the same static the tests exercise.
+    int count = tabButtons.size();
+    for (int i = 0; i < count; i++) {
+      tabRectFor(
+          i,
+          count,
+          frame.x,
+          frame.y,
+          frame.width,
+          frame.height,
+          TAB_HEIGHT,
+          TAB_GAP,
+          tabPosition == TabPosition.TOP,
+          tabRectScratch);
+      tabButtons
+          .get(i)
+          .setTabBounds(
+              tabRectScratch.x, tabRectScratch.y, tabRectScratch.width, tabRectScratch.height);
     }
 
     // Layout all content widgets across all tabs (so they are all measured

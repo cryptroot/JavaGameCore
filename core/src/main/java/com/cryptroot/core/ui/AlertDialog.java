@@ -2,7 +2,7 @@ package com.cryptroot.core.ui;
 
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
-import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.utils.Align;
 import java.util.Objects;
 
 /**
@@ -26,11 +26,6 @@ public final class AlertDialog extends CloseablePanel {
   // Default dimensions for the centered factory.
   private static final float DEFAULT_W = 560f;
   private static final float DEFAULT_H = 180f;
-
-  // Approximate half-cap-height of a BODY-size font (~34 px), used to
-  // nudge the baseline so the text appears vertically centred in the
-  // content area.
-  private static final float BODY_HALF_CAP = 17f;
 
   private final TextLabel messageLabel;
 
@@ -61,10 +56,11 @@ public final class AlertDialog extends CloseablePanel {
         w,
         h);
     Objects.requireNonNull(font, "font must not be null");
-    Rectangle cb = getContentBounds();
-    messageLabel = new TextLabel(font, "", cb.x, cb.y + cb.height / 2f + BODY_HALF_CAP);
-    messageLabel.setAlign(TextLabel.HAlign.CENTER, cb.width);
-    addWidget(messageLabel);
+    // The label is the panel's content, so it is assigned the content rectangle on every layout
+    // pass
+    // and centres itself inside it. No baseline arithmetic, and correct for any font size.
+    messageLabel = new TextLabel(font, "").setBoxAlign(Align.center);
+    setContent(messageLabel);
   }
 
   // -------------------------------------------------------------------------

@@ -3,6 +3,8 @@ package com.cryptroot.core.ui;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
+import com.badlogic.gdx.math.Vector2;
+import com.cryptroot.core.ui.layout.LayoutElement;
 import java.util.Objects;
 
 /**
@@ -41,7 +43,7 @@ import java.util.Objects;
  * bg.draw(batch);
  * }</pre>
  */
-public final class PixelRect implements UiWidget {
+public final class PixelRect implements LayoutElement {
 
   private final Texture pixel;
   private final Color color;
@@ -50,6 +52,32 @@ public final class PixelRect implements UiWidget {
   private float y;
   private float w;
   private float h;
+
+  /** Returns the left edge in world coordinates. */
+  public float getX() {
+    return x;
+  }
+
+  /** Returns the bottom edge in world coordinates. */
+  public float getY() {
+    return y;
+  }
+
+  /** Returns the current width. */
+  public float getWidth() {
+    return w;
+  }
+
+  /** Returns the current height. */
+  public float getHeight() {
+    return h;
+  }
+
+  /** Natural size is whatever was last assigned — a fill rect has no intrinsic size of its own. */
+  @Override
+  public Vector2 preferredSize(Vector2 out) {
+    return out.set(w, h);
+  }
 
   /**
    * @param pixel 1×1 white pixel texture for solid rect drawing
@@ -66,6 +94,7 @@ public final class PixelRect implements UiWidget {
    * Sets all four bounds at once. Intended to be called from {@code layout()} or a parent
    * composite's {@code doLayout()}.
    */
+  @Override
   public void setBounds(float x, float y, float w, float h) {
     this.x = x;
     this.y = y;

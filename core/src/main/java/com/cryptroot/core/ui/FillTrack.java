@@ -4,6 +4,8 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
+import com.cryptroot.core.ui.layout.LayoutElement;
 import java.util.Objects;
 
 /**
@@ -16,7 +18,7 @@ import java.util.Objects;
  * <p>This is a helper widget managed and drawn by its owning composite — it is not intended to be
  * added to a {@link UiLayer} directly.
  */
-public final class FillTrack implements UiWidget {
+public final class FillTrack implements LayoutElement {
 
   private final Texture pixel;
   private final Color bgColor;
@@ -40,11 +42,18 @@ public final class FillTrack implements UiWidget {
   }
 
   /** Sets the position and size of the track in world coordinates. */
+  @Override
   public void setBounds(float x, float y, float w, float h) {
     this.x = x;
     this.y = y;
     this.w = w;
     this.h = h;
+  }
+
+  /** Natural size is whatever was last assigned — a track is sized by its owner. */
+  @Override
+  public Vector2 preferredSize(Vector2 out) {
+    return out.set(w, h);
   }
 
   /** Sets the fill ratio. Value is clamped to [0, 1]. */

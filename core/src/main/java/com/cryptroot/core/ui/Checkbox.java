@@ -3,6 +3,8 @@ package com.cryptroot.core.ui;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.utils.Align;
 import com.cryptroot.core.event.Signal;
 import java.util.Objects;
 
@@ -39,12 +41,14 @@ public final class Checkbox extends BoundedWidget {
 
   private final UiSkin skin;
   private final Texture pixel;
-  private final String label;
-  private float x;
-  private float y; // text baseline
 
+  /** Side length of the square box, derived from the font's cap height. */
   private float boxSize;
+
   private boolean checked;
+
+  /** Scratch for measuring, so layout allocates nothing. */
+  private final Vector2 scratch = new Vector2();
 
   /** Renders the label to the right of the box. */
   private final TextLabel labelText;
@@ -56,43 +60,47 @@ public final class Checkbox extends BoundedWidget {
   private final PixelBorder boxBorder;
 
   /**
+   * Creates a checkbox sized to its own box and label. Position and final size come from the
+   * enclosing layout container, or from an explicit {@link #setBounds} call.
+   *
    * @param skin provides the font (used for label and check glyph)
    * @param pixel 1×1 white texture for solid rect drawing
    * @param label text shown to the right of the box
-   * @param x left edge of the box in world coordinates
-   * @param y text baseline in world coordinates
    * @param initial initial checked state
    */
-  public Checkbox(UiSkin skin, Texture pixel, String label, float x, float y, boolean initial) {
+  public Checkbox(UiSkin skin, Texture pixel, String label, boolean initial) {
     Objects.requireNonNull(skin, "skin must not be null");
     Objects.requireNonNull(pixel, "pixel must not be null");
     Objects.requireNonNull(label, "label must not be null");
     this.skin = skin;
     this.pixel = pixel;
-    this.label = label;
-    this.x = x;
-    this.y = y;
     this.checked = initial;
-    // Positions are placeholder until layout() is called.
-    labelText = new TextLabel(skin.font(), label, 0f, 0f, COLOR_LABEL);
-    checkText =
-        new TextLabel(skin.font(), CHECK_GLYPH, 0f, 0f, Color.BLACK)
-            .setAlign(TextLabel.HAlign.CENTER, 0f);
+
+    labelText = new TextLabel(skin.font(), label, COLOR_LABEL);
+    checkText = new TextLabel(skin.font(), CHECK_GLYPH, Color.BLACK);
     boxBorder = new PixelBorder(pixel, 2f, new Color(1f, 1f, 1f, 0.8f));
+
+    // Registered as ordinary children so the CompositeWidget cascade lays them out and draws them.
+    // The check glyph is toggled with setVisible rather than being drawn by hand.
+    addChild(boxBorder);
+    addChild(checkText);
+    addChild(labelText);
+  }
+
+  /**
+   * Creates a checkbox whose box left edge is at {@code x} with its label baseline at {@code y}.
+   *
+   * <p>Retained for hand-positioned screens; prefer {@link #Checkbox(UiSkin, Texture, String,
+   * boolean)} inside a layout container.
+   */
+  public Checkbox(UiSkin skin, Texture pixel, String label, float x, float y, boolean initial) {
+    this(skin, pixel, label, initial);
+    preferredSize(scratch);
+    setBounds(x, y - scratch.y, scratch.x, scratch.y);
   }
 
   public boolean isChecked() {
     return checked;
-  }
-
-  /**
-   * Repositions the checkbox. Call {@link #layout()} afterwards to apply (a {@link CompositeWidget}
-   * parent does this automatically).
-   */
-  @Override
-  public void setPosition(float newX, float newY) {
-    this.x = newX;
-    this.y = newY;
   }
 
   /**
@@ -104,27 +112,42 @@ public final class Checkbox extends BoundedWidget {
   }
 
   // -------------------------------------------------------------------------
+  // LayoutElement
+  // -------------------------------------------------------------------------
+
+  /** Natural size: the square box, a gap, and the measured label. */
+  @Override
+  public Vector2 preferredSize(Vector2 out) {
+    float box = UiHelper.barHeight(skin.font(), BOX_PADDING);
+    return out.set(box + LABEL_GAP + labelText.getMeasuredWidth(), box);
+  }
+
+  // -------------------------------------------------------------------------
   // UiWidget implementation
   // -------------------------------------------------------------------------
 
   @Override
   protected void doBoundedLayout() {
-    boxSize = UiHelper.barHeight(skin.font(), BOX_PADDING);
-    float totalWidth = boxSize + LABEL_GAP + labelText.getMeasuredWidth();
-    // Bounds cover box + label; y-origin = bottom of box.
-    bounds.set(x, y - boxSize, totalWidth, boxSize);
+    if (frame.width <= 0f || frame.height <= 0f) {
+      preferredSize(scratch);
+      frame.setSize(scratch.x, scratch.y);
+    }
+    bounds.set(frame);
 
-    // Label: baseline at y, to the right of the box.
-    labelText.setPosition(x + boxSize + LABEL_GAP, y);
-    labelText.layout();
+    // The box is square and vertically centred in the frame, never taller than it.
+    boxSize = Math.min(frame.height, UiHelper.barHeight(skin.font(), BOX_PADDING));
+    float boxY = frame.y + (frame.height - boxSize) / 2f;
 
-    // Check glyph: centred around box centre X; baseline computed from capHeight.
-    float boxCentreX = x + boxSize / 2f;
-    float checkY = y - (boxSize - skin.font().getCapHeight()) / 2f;
-    checkText.setPosition(boxCentreX, checkY);
-    checkText.layout();
+    boxBorder.setBounds(frame.x, boxY, boxSize, boxSize);
 
-    boxBorder.setBounds(x, y - boxSize, boxSize, boxSize);
+    checkText.setVisible(checked);
+    checkText.setBoxAlign(Align.center);
+    checkText.setBounds(frame.x, boxY, boxSize, boxSize);
+
+    float labelX = frame.x + boxSize + LABEL_GAP;
+    labelText.setBoxAlign(Align.left | Align.center);
+    labelText.setBounds(
+        labelX, frame.y, Math.max(0f, frame.x + frame.width - labelX), frame.height);
   }
 
   @Override
@@ -142,19 +165,15 @@ public final class Checkbox extends BoundedWidget {
     return false;
   }
 
+  /**
+   * Draws the box fill. The border, check glyph and label are registered children and are drawn
+   * after this by the {@link CompositeWidget} cascade, so they land on top.
+   */
   @Override
   protected void doDraw(PolygonSpriteBatch batch) {
-    // Box fill
     Color fill = checked ? COLOR_BOX_CHECKED : (hovered ? COLOR_BOX_HOVER : COLOR_BOX_NORMAL);
     batch.setColor(fill);
-    batch.draw(pixel, x, y - boxSize, boxSize, boxSize);
-
-    boxBorder.draw(batch);
-
-    // Check glyph (TextLabel handles colour = Color.BLACK and restore)
-    if (checked) checkText.draw(batch);
-
-    // Label (TextLabel handles colour = COLOR_LABEL and restore)
-    labelText.draw(batch);
+    batch.draw(pixel, boxBorder.getX(), boxBorder.getY(), boxSize, boxSize);
+    batch.setColor(Color.WHITE);
   }
 }

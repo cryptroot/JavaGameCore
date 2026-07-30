@@ -4,66 +4,92 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
+import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.utils.Align;
+import com.cryptroot.core.ui.layout.LayoutElement;
 import java.util.Objects;
 
 /**
  * A self-contained, display-only text widget.
  *
- * <p>{@code TextLabel} owns a {@link GlyphLayout} that is computed once per text / position /
- * alignment change (dirty-flag pattern) and reused every frame, eliminating the per-frame {@code
- * new GlyphLayout()} allocations that would otherwise appear in every composite widget's {@code
- * draw()} method.
+ * <p>{@code TextLabel} owns a {@link GlyphLayout} that is baked only when the text, position,
+ * alignment or draw colour actually changes (dirty-flag pattern) and reused every frame,
+ * eliminating the per-frame {@code new GlyphLayout()} allocations that would otherwise appear in
+ * every composite widget's {@code draw()} method.
  *
- * <h3>Alignment</h3>
+ * <h3>Two positioning modes</h3>
  *
  * <ul>
- *   <li>{@link HAlign#LEFT} (default) — text baseline starts at {@code (x, y)}.
- *   <li>{@link HAlign#CENTER} with {@code targetWidth == 0} — text is centred horizontally
- *       <em>around</em> {@code x} (useful when {@code x} is a knob or icon centre). Draw X = {@code
- *       x − width/2}.
- *   <li>{@link HAlign#CENTER} with {@code targetWidth > 0} — text is centred <em>within</em> the
- *       region {@code [x, x + targetWidth]}. Draw X = {@code x + (targetWidth − width) / 2}.
+ *   <li><b>Baseline mode</b> (default) — the constructor and {@link #setPosition} place the text
+ *       baseline directly, with {@link #setAlign(HAlign, float)} controlling horizontal placement
+ *       relative to that point. This is the original behaviour and is what widgets that
+ *       hand-compute text positions rely on.
+ *   <li><b>Box mode</b> — {@link #setBounds} assigns an outer rectangle and the label aligns itself
+ *       inside it according to {@link #setBoxAlign(int)}. This is the {@link LayoutElement} path
+ *       used by layout containers, and the reason a container never has to know anything about
+ *       baselines.
+ * </ul>
+ *
+ * <p>Calling {@link #setBounds} switches to box mode; calling {@link #setPosition} switches back.
+ *
+ * <h3>Baseline-mode alignment</h3>
+ *
+ * <ul>
+ *   <li>{@link HAlign#LEFT} (default) — text starts at {@code x}.
+ *   <li>{@link HAlign#CENTER} / {@link HAlign#RIGHT} with {@code targetWidth == 0} — text is
+ *       centred around, or ends at, {@code x}.
+ *   <li>{@link HAlign#CENTER} / {@link HAlign#RIGHT} with {@code targetWidth > 0} — text is aligned
+ *       within the region {@code [x, x + targetWidth]}.
  * </ul>
  *
  * <h3>Usage — standalone</h3>
  *
  * <pre>{@code
- * TextLabel versionLabel = new TextLabel(game.getFontHint(), "v0.1", 80f, 30f);
+ * TextLabel versionLabel = new TextLabel(context.assets().font(FontSize.HINT), "v0.1", 80f, 30f);
  * uiLayer.add(versionLabel, 0);
  * }</pre>
  *
- * <h3>Usage — inside a CompositeWidget</h3>
+ * <h3>Usage — inside a layout container</h3>
  *
  * <pre>{@code
- * // In the composite's constructor:
- * titleLabel = new TextLabel(font, "Quest Title", 0f, 0f);
- * addChild(titleLabel);
- *
- * // In doLayout():
- * titleLabel.setPosition(computedX, computedY);
- * // CompositeWidget.layout() calls titleLabel.layout() automatically after doLayout().
+ * // No coordinates at all: the VStack assigns bounds, the label aligns within them.
+ * stack.add(new TextLabel(font, "Rooms", 0f, 0f).setBoxAlign(Align.left | Align.center));
  * }</pre>
  */
-public final class TextLabel implements UiWidget {
+public final class TextLabel implements LayoutElement {
 
-  /** Horizontal alignment mode for the label text. */
+  /** Horizontal alignment mode for baseline-mode placement. */
   public enum HAlign {
     LEFT,
-    CENTER
+    CENTER,
+    RIGHT
   }
+
+  /** Box-mode default: text hugs the left edge, vertically centred. */
+  private static final int DEFAULT_BOX_ALIGN = Align.left | Align.center;
 
   private final BitmapFont font;
   private String text;
   private Color color; // always a private copy — never the source constant
   private float x;
-  private float y; // BitmapFont baseline Y
+  private float y; // BitmapFont baseline Y (baseline mode)
   private HAlign align = HAlign.LEFT;
   private float targetWidth = 0f;
 
-  // Cached layout — recomputed only when dirty.
+  /** Outer rectangle assigned by {@link #setBounds}; only meaningful while {@link #boxMode}. */
+  private final Rectangle frame = new Rectangle();
+
+  private boolean boxMode;
+  private int boxAlign = DEFAULT_BOX_ALIGN;
+  private boolean visible = true;
+
+  // Cached layout — rebaked only when dirty, or when a different draw colour is requested.
   private final GlyphLayout glyphLayout = new GlyphLayout();
+  private final Color bakedColor = new Color(Color.WHITE);
   private boolean dirty = true;
   private float drawX; // resolved draw X after alignment
+  private float drawY; // resolved baseline Y
 
   // -------------------------------------------------------------------------
   // Constructors
@@ -83,6 +109,19 @@ public final class TextLabel implements UiWidget {
     this(font, text, x, y);
     Objects.requireNonNull(color, "color must not be null");
     this.color = color.cpy();
+  }
+
+  /**
+   * Creates a label with no initial position, for use inside a layout container that will assign
+   * its bounds. Equivalent to {@code new TextLabel(font, text, 0f, 0f)}.
+   */
+  public TextLabel(BitmapFont font, String text) {
+    this(font, text, 0f, 0f);
+  }
+
+  /** As {@link #TextLabel(BitmapFont, String)}, with an initial colour (copied). */
+  public TextLabel(BitmapFont font, String text, Color color) {
+    this(font, text, 0f, 0f, color);
   }
 
   // -------------------------------------------------------------------------
@@ -113,11 +152,11 @@ public final class TextLabel implements UiWidget {
   }
 
   /**
-   * Configures alignment. Returns {@code this} for chaining.
+   * Configures baseline-mode alignment. Returns {@code this} for chaining.
    *
-   * @param align {@link HAlign#LEFT} or {@link HAlign#CENTER}
-   * @param targetWidth width of the region to centre within; pass {@code 0} to centre the text
-   *     around {@code x} instead
+   * @param align where the text sits relative to {@code x} / the target region
+   * @param targetWidth width of the region to align within; pass {@code 0} to align relative to
+   *     {@code x} itself
    */
   public TextLabel setAlign(HAlign align, float targetWidth) {
     Objects.requireNonNull(align, "align must not be null");
@@ -127,49 +166,100 @@ public final class TextLabel implements UiWidget {
     return this;
   }
 
+  /**
+   * Configures how the text aligns inside the rectangle given to {@link #setBounds} (box mode).
+   *
+   * @param gdxAlign a libGDX {@link Align} bitmask, e.g. {@code Align.right | Align.top}; defaults
+   *     to {@code Align.left | Align.center}
+   */
+  public TextLabel setBoxAlign(int gdxAlign) {
+    this.boxAlign = gdxAlign;
+    dirty = true;
+    return this;
+  }
+
   // -------------------------------------------------------------------------
   // Measured dimensions — available after layout() or draw()
   // -------------------------------------------------------------------------
 
-  /** Width of the rendered text in world units. Forces a remeasure if dirty. */
+  /** Width of the rendered text in world units. Forces a bake if dirty. */
   public float getMeasuredWidth() {
-    if (dirty) remeasure();
+    ensureBaked();
     return glyphLayout.width;
   }
 
-  /** Height of the rendered text in world units. Forces a remeasure if dirty. */
+  /**
+   * Height of the rendered text's glyph bounds in world units. Forces a bake if dirty.
+   *
+   * <p>Note this is the {@link GlyphLayout}'s height, which varies with the actual characters
+   * present (ascenders, brackets, descenders). For laying out uniform rows prefer {@link
+   * #preferredSize}, which reports the font's cap height so that rows do not jitter as their text
+   * changes.
+   */
   public float getMeasuredHeight() {
-    if (dirty) remeasure();
+    ensureBaked();
     return glyphLayout.height;
   }
 
-  /** Resolved draw X after alignment is applied. Forces a remeasure if dirty. */
+  /** Resolved draw X after alignment is applied. Forces a bake if dirty. */
   public float getDrawX() {
-    if (dirty) remeasure();
+    ensureBaked();
     return drawX;
+  }
+
+  /** Resolved text baseline Y after alignment is applied. Forces a bake if dirty. */
+  public float getDrawY() {
+    ensureBaked();
+    return drawY;
+  }
+
+  // -------------------------------------------------------------------------
+  // LayoutElement
+  // -------------------------------------------------------------------------
+
+  /**
+   * Natural size: the measured text width by the font's cap height.
+   *
+   * <p>Cap height rather than {@link #getMeasuredHeight()} deliberately — it is constant for a
+   * given font, so a column of labels has uniform row heights regardless of which characters each
+   * row happens to contain.
+   */
+  @Override
+  public Vector2 preferredSize(Vector2 out) {
+    ensureBaked();
+    return out.set(glyphLayout.width, font.getCapHeight());
+  }
+
+  /** Switches to box mode and aligns the text within {@code (x, y, width, height)}. */
+  @Override
+  public void setBounds(float x, float y, float width, float height) {
+    frame.set(x, y, width, height);
+    boxMode = true;
+    dirty = true;
+  }
+
+  /**
+   * Repositions the text baseline and marks the layout dirty, switching back to baseline mode if
+   * {@link #setBounds} had been used.
+   */
+  @Override
+  public void setPosition(float newX, float newY) {
+    if (this.x != newX || this.y != newY || boxMode) {
+      this.x = newX;
+      this.y = newY;
+      boxMode = false;
+      dirty = true;
+    }
   }
 
   // -------------------------------------------------------------------------
   // UiWidget — non-interactive
   // -------------------------------------------------------------------------
 
-  /**
-   * Repositions the label and marks layout dirty. The next call to {@link #layout()} (or
-   * automatically on first {@link #draw()}) will recompute the draw X.
-   */
-  @Override
-  public void setPosition(float newX, float newY) {
-    if (this.x != newX || this.y != newY) {
-      this.x = newX;
-      this.y = newY;
-      dirty = true;
-    }
-  }
-
-  /** Forces an immediate remeasure and caches the resolved draw X. */
+  /** Forces an immediate bake and caches the resolved draw position. */
   @Override
   public void layout() {
-    remeasure();
+    bake(color);
   }
 
   @Override
@@ -189,64 +279,97 @@ public final class TextLabel implements UiWidget {
   public void reset() {}
 
   /**
-   * Draws the text using the cached {@link GlyphLayout}. Remeasures lazily if the layout is dirty.
-   * Always restores the font colour to {@link Color#WHITE} after drawing.
+   * Shows or hides the label. Hidden labels skip {@link #draw(PolygonSpriteBatch)} but keep
+   * measuring and laying out, so a container's geometry does not jump when one is toggled.
+   *
+   * <p>Lets a composite register a conditionally drawn label as an ordinary child instead of
+   * holding it in a side list and hand-drawing it — see {@link Checkbox}'s check glyph.
    */
+  public TextLabel setVisible(boolean visible) {
+    this.visible = visible;
+    return this;
+  }
+
+  @Override
+  public boolean isVisible() {
+    return visible;
+  }
+
+  /** Draws the text in its stored colour, baking lazily if needed. Skipped when not visible. */
   @Override
   public void draw(PolygonSpriteBatch batch) {
-    font.setColor(color);
-    if (dirty) remeasure();
-    font.draw(batch, glyphLayout, drawX, y);
-    font.setColor(Color.WHITE);
+    if (!visible) return;
+    drawWithColor(batch, color);
   }
 
   /**
-   * Draws the text using the supplied {@code colorOverride} instead of the stored colour. The
-   * colour is applied directly with no copy and no side effect on the stored colour. The font
-   * colour is restored to {@link Color#WHITE} after drawing.
+   * Draws the text using {@code colorOverride} instead of the stored colour, without mutating the
+   * stored colour.
    *
-   * <p>This overload is intended for widgets (e.g. {@link ScrollList}) that need to vary per-item
-   * colour (hover / selected) without allocating a new {@link Color} every frame.
+   * <p>Intended for widgets (e.g. {@link ScrollList}) that vary per-item colour for hover /
+   * selection without allocating a {@link Color} every frame.
+   *
+   * <p>The colour has to be baked into the {@link GlyphLayout}: {@code font.draw(batch, layout, …)}
+   * reads per-glyph colours recorded by {@code GlyphLayout.setText}, so setting the font colour
+   * afterwards would have no effect. The baked colour is therefore cached and the layout is rebaked
+   * only when a genuinely different colour is asked for — so alternating hover states cost one bake
+   * each, not one bake per frame.
    */
   public void drawWithColor(PolygonSpriteBatch batch, Color colorOverride) {
-    if (dirty) remeasure(); // ensure drawX reflects current position
-    font.setColor(colorOverride);
-    glyphLayout.setText(font, text); // re-bake layout with the override colour
-    font.draw(batch, glyphLayout, drawX, y);
-    font.setColor(Color.WHITE);
-    dirty = true; // force re-bake with stored colour on next draw()
+    Objects.requireNonNull(colorOverride, "colorOverride must not be null");
+    if (dirty || !bakedColor.equals(colorOverride)) {
+      bake(colorOverride);
+    }
+    font.draw(batch, glyphLayout, drawX, drawY);
   }
 
   /**
-   * Like {@link #drawWithColor} but draws at {@code (drawX + dxOffset, y + dyOffset)}. Does
-   * <em>not</em> set the dirty flag — intended for a preceding shadow pass followed immediately by
-   * a call to {@link #drawWithColor}.
+   * Like {@link #drawWithColor} but draws at {@code (drawX + dxOffset, drawY + dyOffset)}. Intended
+   * for a shadow pass immediately followed by a call to {@link #drawWithColor}.
    */
   public void drawWithColorOffset(
       PolygonSpriteBatch batch, Color colorOverride, float dxOffset, float dyOffset) {
-    if (dirty) remeasure();
-    font.setColor(colorOverride);
-    glyphLayout.setText(font, text);
-    font.draw(batch, glyphLayout, drawX + dxOffset, y + dyOffset);
-    font.setColor(Color.WHITE);
+    Objects.requireNonNull(colorOverride, "colorOverride must not be null");
+    if (dirty || !bakedColor.equals(colorOverride)) {
+      bake(colorOverride);
+    }
+    font.draw(batch, glyphLayout, drawX + dxOffset, drawY + dyOffset);
   }
 
   // -------------------------------------------------------------------------
   // Private
   // -------------------------------------------------------------------------
 
-  private void remeasure() {
-    font.setColor(color);
+  private void ensureBaked() {
+    if (dirty) bake(color);
+  }
+
+  /**
+   * Rebuilds the glyph layout with {@code bakeWith} as the glyph colour and resolves the draw
+   * position from the current mode.
+   */
+  private void bake(Color bakeWith) {
+    font.setColor(bakeWith);
     glyphLayout.setText(font, text);
     font.setColor(Color.WHITE);
-    drawX =
-        switch (align) {
-          case CENTER ->
-              targetWidth > 0f
-                  ? x + (targetWidth - glyphLayout.width) / 2f
-                  : x - glyphLayout.width / 2f;
-          default -> x;
-        };
+    bakedColor.set(bakeWith);
+
+    if (boxMode) {
+      drawX = UiHelper.alignIn(frame.x, frame.width, glyphLayout.width, boxAlign);
+      drawY = UiHelper.baselineIn(frame.y, frame.height, font.getCapHeight(), boxAlign);
+    } else {
+      drawX =
+          switch (align) {
+            case CENTER ->
+                targetWidth > 0f
+                    ? x + (targetWidth - glyphLayout.width) / 2f
+                    : x - glyphLayout.width / 2f;
+            case RIGHT ->
+                targetWidth > 0f ? x + targetWidth - glyphLayout.width : x - glyphLayout.width;
+            default -> x;
+          };
+      drawY = y;
+    }
     dirty = false;
   }
 }

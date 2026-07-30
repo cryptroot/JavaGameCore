@@ -30,16 +30,24 @@ import java.util.Objects;
  *
  * <h3>Outline integration</h3>
  *
- * {@code HotspotWidget} implements {@link OutlineCaptureSource}. The owning screen must drive the
- * capture/blit cycle around {@code batch.begin()}:
+ * {@code HotspotWidget} implements {@link OutlineCaptureSource}, so the outline ring requires an
+ * FBO capture before {@code batch.begin()} and a blit inside the block. {@link
+ * com.cryptroot.core.screen.BaseScreen BaseScreen} sequences this for you — no screen code is
+ * needed.
+ *
+ * <p>Only a screen that draws the layer by hand has to drive the cycle itself, in this order:
  *
  * <pre>{@code
- * // before batch.begin:
+ * uiLayer.render(batch, context.outlineRenderer());   // preferred: does all of the below
+ *
+ * // equivalent long form:
  * uiLayer.captureOutlines(context.outlineRenderer(), batch,
- *                          context.camera().combined, context.viewport());
+ *                          context.camera().combined, context.viewport());  // before begin()
+ * batch.setProjectionMatrix(context.camera().combined);
  * batch.begin();
  * uiLayer.draw(batch);
  * uiLayer.drawOutlines(context.outlineRenderer(), batch);
+ * uiLayer.drawPostOutlines(batch);
  * batch.end();
  * }</pre>
  *
@@ -69,10 +77,6 @@ public final class HotspotWidget extends BoundedWidget implements OutlineCapture
   private static final int HIT_ALPHA_THRESHOLD = 127;
 
   // ---- Draw rect ----
-  private final float drawX;
-  private final float drawY;
-  private final float drawW;
-  private final float drawH;
 
   // ---- Visual ----
   private TextureRegion region;
@@ -136,7 +140,7 @@ public final class HotspotWidget extends BoundedWidget implements OutlineCapture
   /**
    * Creates a hotspot without a hover label.
    *
-   * @param region the overlay texture region drawn at {@code (drawX,drawY,drawW,drawH)}
+   * @param region the overlay texture region drawn at {@code (drawX, drawY, drawW, drawH)}
    * @param drawX bottom-left world X of the draw rect (typically matches the panel X)
    * @param drawY bottom-left world Y of the draw rect
    * @param drawW draw width in world units
@@ -144,6 +148,15 @@ public final class HotspotWidget extends BoundedWidget implements OutlineCapture
    */
   public HotspotWidget(TextureRegion region, float drawX, float drawY, float drawW, float drawH) {
     this(region, null, null, drawX, drawY, drawW, drawH);
+  }
+
+  /**
+   * Creates a hotspot sized by its enclosing layout container, with no hover label.
+   *
+   * @param region the overlay texture region
+   */
+  public HotspotWidget(TextureRegion region) {
+    this(region, null, null, 0f, 0f, 0f, 0f);
   }
 
   /**
@@ -185,10 +198,7 @@ public final class HotspotWidget extends BoundedWidget implements OutlineCapture
     this.region = region;
     this.labelFont = labelFont;
     this.label = label;
-    this.drawX = drawX;
-    this.drawY = drawY;
-    this.drawW = drawW;
-    this.drawH = drawH;
+    setBounds(drawX, drawY, drawW, drawH);
     if (labelFont != null && label != null) {
       hoverLabel = new TextLabel(labelFont, label, 0f, 0f);
       hoverLabel.setAlign(TextLabel.HAlign.CENTER, 0f);
@@ -255,9 +265,19 @@ public final class HotspotWidget extends BoundedWidget implements OutlineCapture
   // BoundedWidget
   // -------------------------------------------------------------------------
 
+  /** Natural size: the region's own pixel dimensions, so a hotspot defaults to 1:1 with its art. */
+  @Override
+  public com.badlogic.gdx.math.Vector2 preferredSize(com.badlogic.gdx.math.Vector2 out) {
+    return out.set(region.getRegionWidth(), region.getRegionHeight());
+  }
+
   @Override
   protected void doBoundedLayout() {
-    bounds.set(drawX, drawY, drawW, drawH);
+    if (frame.width <= 0f || frame.height <= 0f) {
+      if (frame.width <= 0f) frame.width = region.getRegionWidth();
+      if (frame.height <= 0f) frame.height = region.getRegionHeight();
+    }
+    bounds.set(frame);
     if (hoverLabel != null) hoverLabel.layout();
   }
 
@@ -281,7 +301,7 @@ public final class HotspotWidget extends BoundedWidget implements OutlineCapture
   @Override
   protected void doDraw(PolygonSpriteBatch batch) {
     batch.setColor(Color.WHITE);
-    batch.draw(region, drawX, drawY, drawW, drawH);
+    batch.draw(region, frame.x, frame.y, frame.width, frame.height);
     // Always-visible label: draw here at full alpha so it shows even when not
     // hovered.  When hovered the outline pass will cover this draw, and
     // drawPostOutline() redraws it on top at full alpha.
@@ -354,7 +374,7 @@ public final class HotspotWidget extends BoundedWidget implements OutlineCapture
 
   @Override
   public void drawForCapture(PolygonSpriteBatch batch) {
-    batch.draw(region, drawX, drawY, drawW, drawH);
+    batch.draw(region, frame.x, frame.y, frame.width, frame.height);
   }
 
   // -------------------------------------------------------------------------
@@ -474,8 +494,8 @@ public final class HotspotWidget extends BoundedWidget implements OutlineCapture
 
     // Map bounding-box centre to world coordinates.
     // Pixmap y=0 is at the top; world y=0 is at the bottom — flip Y.
-    float cx = drawX + ((minPx + maxPx) * 0.5f / mask.getWidth()) * drawW;
-    float cy = drawY + (1f - (minPy + maxPy) * 0.5f / mask.getHeight()) * drawH;
+    float cx = frame.x + ((minPx + maxPx) * 0.5f / mask.getWidth()) * frame.width;
+    float cy = frame.y + (1f - (minPy + maxPy) * 0.5f / mask.getHeight()) * frame.height;
 
     hoverLabel.setPosition(cx, cy);
     hoverLabel.layout();
@@ -494,8 +514,8 @@ public final class HotspotWidget extends BoundedWidget implements OutlineCapture
    * @return {@code true} if the sampled pixel's alpha exceeds {@value #HIT_ALPHA_THRESHOLD}
    */
   private boolean samplePixmap(Pixmap pixmap, float worldX, float worldY) {
-    float fx = (worldX - drawX) / drawW;
-    float fy = (worldY - drawY) / drawH; // 0=bottom,  1=top  in world space
+    float fx = (worldX - frame.x) / frame.width;
+    float fy = (worldY - frame.y) / frame.height; // 0=bottom,  1=top  in world space
 
     int px = (int) (fx * pixmap.getWidth());
     int py = (int) ((1f - fy) * pixmap.getHeight()); // flip Y for Pixmap
