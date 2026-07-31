@@ -13,9 +13,9 @@ package com.cryptroot.core.ui.layout;
  *
  * <pre>{@code
  * HStack columns = new HStack().spacing(16f).stretchCross(true)
- *         .add(roomsPanel, 1f)
- *         .add(guestsPanel, 1f)
- *         .add(employeesPanel, 1f);
+ *         .add(leftPanel, 1f)
+ *         .add(middlePanel, 1f)
+ *         .add(rightPanel, 1f);
  * }</pre>
  */
 public final class HStack extends AxisStack<HStack> {

@@ -36,9 +36,9 @@ import java.util.Objects;
  * uiLayer.setRoot(new VStack().padding(Insets.all(20f)).spacing(16f)
  *         .add(topBar())
  *         .add(new HStack().spacing(16f).stretchCross(true)
- *                 .add(roomsPanel, 1f)
- *                 .add(guestsPanel, 1f), 1f)
- *         .add(logPanel, 1f));
+ *                 .add(leftPanel, 1f)
+ *                 .add(rightPanel, 1f), 1f)
+ *         .add(bottomPanel, 1f));
  * }</pre>
  *
  * <h3>Rebuilding</h3>
@@ -306,12 +306,9 @@ public abstract class LayoutContainer<SELF extends LayoutContainer<SELF>> extend
   @Override
   public boolean hit(float worldX, float worldY) {
     if (clipChildren && !bounds.contains(worldX, worldY)) return false;
-    // Reverse order: last added draws on top, so it is tested first.
-    List<UiWidget> kids = children();
-    for (int i = kids.size() - 1; i >= 0; i--) {
-      if (kids.get(i).hit(worldX, worldY)) return true;
-    }
-    return false;
+    // Reverse order (last added draws on top, so it is tested first) via CompositeWidget's helper,
+    // which also records the consumer so hitFocusable() can reach a nested Focusable child.
+    return hitChildren(worldX, worldY);
   }
 
   @Override

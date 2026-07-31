@@ -315,13 +315,11 @@ public class Panel extends BoundedWidget {
   @Override
   public boolean hit(float worldX, float worldY) {
     if (!visible) return false;
-    // Iterate registered children in reverse-insertion order (topmost first).
-    // Must NOT call super.hit() here because BoundedWidget.hit() is a raw
-    // bounds check that would short-circuit before any child is tested.
-    var kids = children();
-    for (int i = kids.size() - 1; i >= 0; i--) {
-      if (kids.get(i).hit(worldX, worldY)) return true;
-    }
+    // Offer the point to children (topmost first) via CompositeWidget's helper, which also records
+    // the consumer so a nested Focusable can still be found by hitFocusable(). Must NOT call
+    // super.hit() here: BoundedWidget.hit() is a raw bounds check that would short-circuit before
+    // any child is tested.
+    if (hitChildren(worldX, worldY)) return true;
     return opaque && bounds.contains(worldX, worldY);
   }
 

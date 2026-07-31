@@ -206,6 +206,24 @@ public final class UiLayer {
     return root;
   }
 
+  /**
+   * Returns every widget in this layer in ascending z-order (lowest z first), including the
+   * {@linkplain #setRoot layout root}.
+   *
+   * <p>A read-only snapshot of the same order {@link #draw(PolygonSpriteBatch)} uses, provided so a
+   * caller can walk the whole widget tree — {@link #getRoot()} alone misses anything added with
+   * {@link #add(UiWidget, int)}, which is how dialogs, popups and tooltips get onto a layer.
+   * Mutating the layer while iterating the returned list is safe: the list is a copy of the entry
+   * order, not a live view.
+   */
+  public List<UiWidget> widgets() {
+    List<UiWidget> out = new ArrayList<>(ascending.size());
+    for (Entry e : ascending) {
+      out.add(e.widget);
+    }
+    return List.copyOf(out);
+  }
+
   /** Assigns the viewport rectangle to the layout root, if one is set. */
   private void layoutRoot() {
     if (root == null) return;

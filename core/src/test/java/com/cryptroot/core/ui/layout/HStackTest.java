@@ -29,7 +29,9 @@ class HStackTest {
     assertEquals(40f, b.assigned.width, EPS);
   }
 
-  /** The motel's three-column row: equal weights must give equal widths. */
+  /**
+   * The three-column HUD row: equal weights must give equal widths whatever the children measure.
+   */
   @Test
   void threeEqualWeightsGiveThreeEqualColumns() {
     FakeElement a = new FakeElement(100f, 10f, 1f);

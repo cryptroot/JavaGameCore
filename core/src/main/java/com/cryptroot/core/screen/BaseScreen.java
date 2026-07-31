@@ -60,6 +60,23 @@ public abstract class BaseScreen<C extends GameContext> extends ScreenAdapter {
     this.uiLayer = new UiLayer(context.viewport(), context.camera());
   }
 
+  /**
+   * Returns this screen's {@link UiLayer}.
+   *
+   * <p>Exists for code <em>outside</em> the screen's own package that needs to inspect the widget
+   * tree — chiefly an interaction/verification harness asking "which button is on screen and where
+   * are its bounds?". The {@link #uiLayer} field is {@code protected}, which grants access to
+   * subclasses and to this package, but not to a game's own package, so a test living beside a game
+   * screen has no other way in. Subclasses keep using the field.
+   *
+   * <p>The layer is returned as-is rather than as a read-only view: a caller that adds or removes
+   * widgets is doing exactly what {@link #onShow()} does, and copying the layer would defeat the
+   * purpose.
+   */
+  public final UiLayer uiLayer() {
+    return uiLayer;
+  }
+
   // -------------------------------------------------------------------------
   // Hooks
   // -------------------------------------------------------------------------

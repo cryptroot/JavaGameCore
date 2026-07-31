@@ -134,6 +134,17 @@ public final class ScrollList extends BoundedWidget implements Clippable {
     recalcMetrics();
   }
 
+  /**
+   * The rows currently displayed, in order, as an unmodifiable copy.
+   *
+   * <p>The read side of {@link #setItems(List)}. A caller that populated the list already knows
+   * what it put in; this exists for the callers that did not — a verification harness asking "does
+   * the log on screen contain this line?", or a widget wrapping a list it does not own.
+   */
+  public List<String> getItems() {
+    return List.copyOf(items);
+  }
+
   /** The selected row index, or {@link #NO_SELECTION}. */
   public int getSelectedIndex() {
     return selectedIndex;
