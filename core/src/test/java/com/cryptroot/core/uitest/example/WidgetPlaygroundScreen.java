@@ -5,6 +5,7 @@ import com.badlogic.gdx.utils.Align;
 import com.cryptroot.core.FontSize;
 import com.cryptroot.core.screen.BaseScreen;
 import com.cryptroot.core.ui.Button;
+import com.cryptroot.core.ui.Checkbox;
 import com.cryptroot.core.ui.InputField;
 import com.cryptroot.core.ui.Panel;
 import com.cryptroot.core.ui.ScrollList;
@@ -23,10 +24,29 @@ import java.util.List;
  * <p>Purpose-built rather than borrowed from a game, because {@code core} is the innermost module
  * and cannot depend on one. Each widget is here to cover a distinct input path — click, drag,
  * scroll, keyboard — so a regression in the harness shows up as a specific failing step.
+ *
+ * <p>Two extra widgets sit outside the layout tree with only one axis assigned. They cover the
+ * natural-size fallback rather than an input path: a widget must fill the dimension it was not
+ * given and keep the one it was.
  */
 final class WidgetPlaygroundScreen extends BaseScreen<PlaygroundContext> {
 
   static final String INCREMENT_LABEL = "Increment";
+
+  static final String SAVE_LABEL = "Save";
+
+  /** Width assigned to {@link #widthOnlyCheckbox}; its height must come from the font. */
+  static final float ASSIGNED_WIDTH = 300f;
+
+  /** Height assigned to {@link #heightOnlyButton}; its width must come from its label. */
+  static final float ASSIGNED_HEIGHT = 60f;
+
+  /** Hand-placed column for the partial-bounds widgets, clear of the laid-out tree. */
+  private static final float PARTIAL_X = 1150f;
+
+  private static final float PARTIAL_CHECKBOX_Y = 930f;
+
+  private static final float PARTIAL_BUTTON_Y = 850f;
 
   /** Enough rows that the list must scroll, so scrolling has an observable effect. */
   private static final int ROW_COUNT = 40;
@@ -43,6 +63,8 @@ final class WidgetPlaygroundScreen extends BaseScreen<PlaygroundContext> {
   private Slider slider;
   private ScrollList list;
   private InputField field;
+  private Checkbox widthOnlyCheckbox;
+  private Button heightOnlyButton;
 
   WidgetPlaygroundScreen(PlaygroundContext context) {
     super(context);
@@ -85,6 +107,17 @@ final class WidgetPlaygroundScreen extends BaseScreen<PlaygroundContext> {
     Panel panel = new Panel(pixel);
     panel.setContent(body);
     uiLayer.setRoot(panel);
+
+    // Two widgets given one axis only, positioned by hand above the root. The layout fallback must
+    // fill the missing axis and leave the assigned one untouched; a widget that reset both would
+    // silently ignore a size its container had already decided.
+    widthOnlyCheckbox = new Checkbox(skin, pixel, "Partial width", false);
+    widthOnlyCheckbox.setBounds(PARTIAL_X, PARTIAL_CHECKBOX_Y, ASSIGNED_WIDTH, 0f);
+    uiLayer.add(widthOnlyCheckbox, 1);
+
+    heightOnlyButton = new Button(skin, SAVE_LABEL);
+    heightOnlyButton.setBounds(PARTIAL_X, PARTIAL_BUTTON_Y, 0f, ASSIGNED_HEIGHT);
+    uiLayer.add(heightOnlyButton, 1);
   }
 
   private String counterText() {
@@ -117,5 +150,13 @@ final class WidgetPlaygroundScreen extends BaseScreen<PlaygroundContext> {
 
   InputField field() {
     return field;
+  }
+
+  Checkbox widthOnlyCheckbox() {
+    return widthOnlyCheckbox;
+  }
+
+  Button heightOnlyButton() {
+    return heightOnlyButton;
   }
 }

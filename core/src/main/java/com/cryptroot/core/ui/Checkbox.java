@@ -128,9 +128,12 @@ public final class Checkbox extends BoundedWidget {
 
   @Override
   protected void doBoundedLayout() {
+    // Fall back per axis, never both. A container often assigns one axis and leaves the other
+    // zero for the widget to measure; replacing both would discard the size just assigned.
     if (frame.width <= 0f || frame.height <= 0f) {
-      preferredSize(scratch);
-      frame.setSize(scratch.x, scratch.y);
+      Vector2 natural = preferredSize(scratch);
+      if (frame.width <= 0f) frame.width = natural.x;
+      if (frame.height <= 0f) frame.height = natural.y;
     }
     bounds.set(frame);
 

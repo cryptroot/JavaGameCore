@@ -98,6 +98,30 @@ class WidgetPlaygroundUiTest {
       return UiScenario.begin()
           // Let the initial resize lay the tree out before anything is resolved or clicked.
           .waitFrames(3)
+          // Layout fallback: a widget given one axis must measure the other and keep the one it was
+          // given. Overwriting both would silently discard a container's decision.
+          .check(
+              "partial bounds fall back per axis",
+              () -> {
+                Rectangle checkbox = screenUnderTest.widthOnlyCheckbox().getBounds();
+                assertEquals(
+                    WidgetPlaygroundScreen.ASSIGNED_WIDTH,
+                    checkbox.width,
+                    0.01f,
+                    "the assigned width must survive layout");
+                assertTrue(
+                    checkbox.height > 0f,
+                    "the unassigned height must be measured, was " + checkbox);
+
+                Rectangle button = screenUnderTest.heightOnlyButton().getBounds();
+                assertEquals(
+                    WidgetPlaygroundScreen.ASSIGNED_HEIGHT,
+                    button.height,
+                    0.01f,
+                    "the assigned height must survive layout");
+                assertTrue(
+                    button.width > 0f, "the unassigned width must be measured, was " + button);
+              })
           .hover(
               "hover the increment button",
               layer -> WidgetQuery.requireButton(layer, WidgetPlaygroundScreen.INCREMENT_LABEL))

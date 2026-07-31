@@ -76,8 +76,23 @@ public final class ScissorRegion {
   /**
    * Supplies the viewport and camera to clip against. Until this is called, {@link #begin} draws
    * unclipped rather than failing, so a widget used outside a {@link UiLayer} still renders.
+   *
+   * <p>Both may be {@code null} together, which clears the context and returns the region to that
+   * unclipped state. Supplying exactly one is rejected: {@link #begin} cannot clip without both, so
+   * a half-set context would silently disable clipping for the rest of the widget's life — content
+   * spilling past its panel with nothing in the logs, which is materially harder to diagnose than
+   * an exception at the call that got it wrong.
+   *
+   * @throws IllegalArgumentException if exactly one of {@code viewport} and {@code camera} is null
    */
   public void setClipContext(Viewport viewport, Camera camera) {
+    if ((viewport == null) != (camera == null)) {
+      throw new IllegalArgumentException(
+          "clip context needs both a viewport and a camera, or neither; got viewport="
+              + viewport
+              + ", camera="
+              + camera);
+    }
     this.viewport = viewport;
     this.camera = camera;
   }
@@ -97,8 +112,10 @@ public final class ScissorRegion {
    */
   public boolean begin(PolygonSpriteBatch batch) {
     Objects.requireNonNull(batch, "batch must not be null");
+    // No clip context: draw unclipped rather than swallow the content. Both are tested even though
+    // setClipContext keeps the pair all-or-nothing — the check costs nothing and a missed null here
+    // would be an NPE inside calculateScissors, far from the caller that caused it.
     if (viewport == null || camera == null) {
-      // No clip context: draw unclipped rather than swallow the content.
       return true;
     }
     batch.flush();

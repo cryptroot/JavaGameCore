@@ -29,7 +29,8 @@ import java.util.Objects;
  * aligned inside it — so row spacing can never disagree with button height.
  *
  * <p>A button added straight to a {@link UiLayer} with no container and no explicit bounds falls
- * back to its natural size, so it still renders rather than collapsing to nothing.
+ * back to its natural size, so it still renders rather than collapsing to nothing. The fallback is
+ * per axis: assign only a width and the height is still measured from the label, and vice versa.
  *
  * <p>There is deliberately no "centre in the world" helper. Centring is expressed as {@link
  * #align(int) align(Align.center)} within whatever rectangle the parent assigns, which works at any
@@ -177,9 +178,13 @@ public class Button extends BoundedWidget {
    */
   @Override
   protected void doBoundedLayout() {
+    // Fall back per axis, never both. A container that stretches a row assigns the width and
+    // leaves the height zero for the button to measure from its label, and vice versa; replacing
+    // both would discard whichever axis the container had already decided.
     if (frame.width <= 0f || frame.height <= 0f) {
-      preferredSize(scratch);
-      frame.setSize(scratch.x, scratch.y);
+      Vector2 natural = preferredSize(scratch);
+      if (frame.width <= 0f) frame.width = natural.x;
+      if (frame.height <= 0f) frame.height = natural.y;
     }
     bounds.set(frame);
 

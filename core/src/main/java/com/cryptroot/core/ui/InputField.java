@@ -80,6 +80,13 @@ public final class InputField extends BoundedWidget implements Focusable {
   private float textAreaX;
   private float textAreaW;
 
+  /**
+   * Y the text is drawn at, resolved in {@link #doBoundedLayout()} — the <em>top</em> of the cap
+   * band, which is the coordinate {@code BitmapFont.draw} takes. Stored rather than recomputed in
+   * {@code doAfterDraw} so the caret cannot drift away from the glyphs it sits among.
+   */
+  private float textBaseline;
+
   private final StringBuilder text = new StringBuilder();
   private int cursorPos = 0;
   private float blinkTimer = 0f;
@@ -157,7 +164,7 @@ public final class InputField extends BoundedWidget implements Focusable {
     textAreaW = Math.max(0f, frame.width - PADDING_H * 2f - CURSOR_WIDTH);
 
     // Vertically centre the text in the field via the shared metric helper.
-    float textBaseline =
+    textBaseline =
         UiHelper.baselineIn(frame.y, frame.height, skin.font().getCapHeight(), Align.center);
 
     visibleLabel.setPosition(textAreaX, textBaseline);
@@ -198,13 +205,14 @@ public final class InputField extends BoundedWidget implements Focusable {
     glMeasure.setText(skin.font(), visibleBeforeCursor);
     float cursorX = textAreaX + glMeasure.width;
 
+    // The caret must span the same band as the glyphs: [baseline - capHeight, baseline]. batch.draw
+    // grows upwards from the y it is given, while textBaseline is the *top* of the cap band, so the
+    // rectangle starts a cap height below it. Passing textBaseline directly drew the caret one
+    // whole
+    // cap height above the text.
+    float capHeight = skin.font().getCapHeight();
     batch.setColor(COLOR_CURSOR);
-    batch.draw(
-        pixel,
-        cursorX,
-        UiHelper.baselineIn(frame.y, frame.height, skin.font().getCapHeight(), Align.center),
-        CURSOR_WIDTH,
-        skin.font().getCapHeight());
+    batch.draw(pixel, cursorX, textBaseline - capHeight, CURSOR_WIDTH, capHeight);
     batch.setColor(Color.WHITE);
   }
 

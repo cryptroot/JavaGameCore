@@ -61,9 +61,11 @@
     <build>
         <plugins>
             <!-- Publishes src/test/java as core-<version>-tests.jar so a game module can depend on
-                 com.cryptroot.core.uitest (the UI interaction harness) from its own tests. Within a
-                 single reactor run Maven resolves this to core/target/test-classes; a standalone
-                 `mvn -pl motel test` needs `mvn install -DskipTests` first. -->
+                 com.cryptroot.core.uitest (the UI interaction harness) from its own tests. When the
+                 game is built in the same reactor run as core (an aggregator root, or `-am`), Maven
+                 resolves this to core/target/test-classes and nothing else is needed. Building that
+                 module on its own resolves against the local repository, so run `mvn install
+                 -DskipTests` here first. -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
