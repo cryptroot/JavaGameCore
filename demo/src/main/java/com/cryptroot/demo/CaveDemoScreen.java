@@ -1,9 +1,9 @@
 package com.cryptroot.demo;
 
-import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputAdapter;
 import com.badlogic.gdx.InputMultiplexer;
+import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -62,7 +62,7 @@ public final class CaveDemoScreen extends BaseGameScreen<DemoGameContext> {
   }
 
   @Override
-  public void show() {
+  protected void onShow() {
     TiledMapLoader loader = new TiledMapLoader(context.assets().resources());
     TiledMap map;
     try {
@@ -103,14 +103,20 @@ public final class CaveDemoScreen extends BaseGameScreen<DemoGameContext> {
             enemyTexture,
             bulletTexture,
             rangeRingTexture);
+  }
 
-    InputMultiplexer input =
-        new InputMultiplexer(
-            timeControlAdapter(),
-            towerPlacementAdapter(),
-            worldCamera.dragAdapter(),
-            worldCamera.scrollAdapter());
-    Gdx.input.setInputProcessor(input);
+  /**
+   * Tower placement is registered before the camera drag adapter so a successful placement consumes
+   * the press instead of also starting a pan. Built after {@link #onShow()} has run, so {@link
+   * #towerDefense} is already wired.
+   */
+  @Override
+  protected InputProcessor inputProcessor() {
+    return new InputMultiplexer(
+        timeControlAdapter(),
+        towerPlacementAdapter(),
+        worldCamera.dragAdapter(),
+        worldCamera.scrollAdapter());
   }
 
   /**

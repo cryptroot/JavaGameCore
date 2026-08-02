@@ -33,7 +33,10 @@ import java.util.Objects;
  *
  * The default {@link #hit} implementation tests children in reverse-insertion order (last added is
  * topmost). Subclasses that want a composite-level bounds check (e.g., {@link Button}) should
- * {@code @Override} {@code hit} entirely rather than calling {@code super.hit}.
+ * {@code @Override} {@code hit} entirely rather than calling {@code super.hit}. An override that
+ * still offers the point to children must do so via {@link #hitChildren(float, float)} rather than
+ * looping over {@link #children()} itself, or keyboard focus will not reach a nested {@link
+ * Focusable} — see {@link #hitFocusable()}.
  *
  * <h3>Example</h3>
  *
@@ -63,6 +66,12 @@ import java.util.Objects;
 public abstract class CompositeWidget implements UiWidget {
 
   private final List<UiWidget> children = new ArrayList<>();
+
+  /**
+   * The child that consumed the most recent {@link #hitChildren(float, float)} call, or {@code
+   * null}. Read only by {@link #hitFocusable()}.
+   */
+  private UiWidget hitChild;
 
   // -------------------------------------------------------------------------
   // Child management
@@ -116,6 +125,7 @@ public abstract class CompositeWidget implements UiWidget {
    */
   @Override
   public final void reset() {
+    hitChild = null;
     doReset();
     for (UiWidget c : children) c.reset();
   }
@@ -130,16 +140,65 @@ public abstract class CompositeWidget implements UiWidget {
     for (UiWidget c : children) c.updateHover(worldX, worldY);
   }
 
+  /** Forwards to all children so an occluded subtree clears its hover state in one call. */
+  @Override
+  public void clearHover() {
+    for (UiWidget c : children) c.clearHover();
+  }
+
+  /** Returns {@code true} if any child contains the point. Side-effect-free. */
+  @Override
+  public boolean contains(float worldX, float worldY) {
+    for (int i = children.size() - 1; i >= 0; i--) {
+      if (children.get(i).contains(worldX, worldY)) return true;
+    }
+    return false;
+  }
+
   /**
    * Tests children in reverse-insertion order (last added = topmost). Subclasses may override
-   * entirely to do a composite-level bounds check.
+   * entirely to do a composite-level bounds check — but should route the child scan through {@link
+   * #hitChildren(float, float)} so keyboard focus keeps working (see {@link #hitFocusable()}).
    */
   @Override
   public boolean hit(float worldX, float worldY) {
+    return hitChildren(worldX, worldY);
+  }
+
+  /**
+   * Offers the point to children in reverse-insertion order (last added = topmost), stopping at the
+   * first consumer, and remembers which child that was.
+   *
+   * <p>Remembering matters because {@link UiLayer} only ever asks the <em>top-level</em> widget for
+   * the {@link Focusable} to focus: without the record, a focusable widget nested anywhere inside a
+   * panel or stack could never receive keyboard focus, since the container would answer "none".
+   *
+   * @return {@code true} if a child consumed the point
+   */
+  protected final boolean hitChildren(float worldX, float worldY) {
     for (int i = children.size() - 1; i >= 0; i--) {
-      if (children.get(i).hit(worldX, worldY)) return true;
+      UiWidget child = children.get(i);
+      if (child.hit(worldX, worldY)) {
+        hitChild = child;
+        return true;
+      }
     }
+    hitChild = null;
     return false;
+  }
+
+  /**
+   * This widget if it is itself {@link Focusable}, otherwise whatever the child that consumed the
+   * most recent {@link #hitChildren(float, float)} call reports.
+   *
+   * <p>Focus therefore reaches an {@link InputField} however deeply it is nested — inside a {@link
+   * Panel}, inside a {@link com.cryptroot.core.ui.layout.VStack VStack}, inside another panel —
+   * which is the only arrangement a layout-driven screen ever produces.
+   */
+  @Override
+  public Focusable hitFocusable() {
+    if (this instanceof Focusable self) return self;
+    return hitChild == null ? null : hitChild.hitFocusable();
   }
 
   /** Forwards to all children; returns {@code true} on the first frame-consuming child. */

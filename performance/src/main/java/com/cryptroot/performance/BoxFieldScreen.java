@@ -3,6 +3,7 @@ package com.cryptroot.performance;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputAdapter;
+import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.cryptroot.core.FontSize;
@@ -56,7 +57,7 @@ public final class BoxFieldScreen extends BaseScreen<PerfDemoContext> {
   }
 
   @Override
-  public void show() {
+  protected void onShow() {
     pixel = new TextureRegion(context.assets().resources().getPixelTexture());
     spawnBoxes(boxCount);
 
@@ -68,8 +69,12 @@ public final class BoxFieldScreen extends BaseScreen<PerfDemoContext> {
             context.viewport().getWorldHeight() - 12f);
     uiLayer.add(hud, 0);
     refreshHud();
+  }
 
-    Gdx.input.setInputProcessor(keyAdapter());
+  /** This screen has no clickable widgets, so only the key adapter is installed. */
+  @Override
+  protected InputProcessor inputProcessor() {
+    return keyAdapter();
   }
 
   @Override
@@ -80,7 +85,7 @@ public final class BoxFieldScreen extends BaseScreen<PerfDemoContext> {
     activeSystem().update(world);
     lastCollisionMillis = (System.nanoTime() - start) / 1_000_000.0;
 
-    pipeline.render(world, context.camera(), uiLayer);
+    pipeline.render(world, context.camera());
     refreshHud();
   }
 

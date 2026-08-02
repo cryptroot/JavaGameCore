@@ -29,4 +29,8 @@ geometry/pathfinding belongs in `core` (`core.grid`, `core.path`), not here.
   intentional (e.g. a missing table/resource returning empty instead of throwing) — otherwise
   validate at the public API boundary rather than letting bad TMX data fail obscurely deep in
   parsing/rendering.
+- **Never name a game, in code or in prose** — same golden rule as `core` (see
+  [../CLAUDE.md](../CLAUDE.md)). No game class names or domain nouns in Javadoc, comments, this file,
+  test names or fixture-describing comments; describe the pattern and use generic names. A map fixture
+  is `Embedded.tmx`, not a level from whatever game is currently being built.
 - Run `mvn spotless:apply` from the repo root after editing any Java file here.

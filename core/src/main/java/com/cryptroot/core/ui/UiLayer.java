@@ -10,7 +10,10 @@ import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.cryptroot.core.render.SelectionOutlineRenderer;
+import com.cryptroot.core.ui.layout.Clippable;
+import com.cryptroot.core.ui.layout.LayoutElement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -54,7 +57,17 @@ import java.util.Objects;
  *
  * <h3>Render contract</h3>
  *
- * {@link #update(float)} returns {@code true} when a widget has consumed the frame (e.g., a
+ * This layer owns its own {@link Viewport} and {@link OrthographicCamera}, so it also owns the
+ * projection the UI is drawn with: call {@link #render(PolygonSpriteBatch,
+ * SelectionOutlineRenderer)} and it sets the projection, brackets {@code begin()}/{@code end()},
+ * and drives the outline passes in the correct order. {@link com.cryptroot.core.screen.BaseScreen
+ * BaseScreen} does this for every screen automatically. {@link #draw(PolygonSpriteBatch)} remains
+ * available for composing the layer into an existing batch block, and fails fast if the projection
+ * does not match — drawing the UI with a different projection than {@link #update(float)} and
+ * {@link #inputProcessor()} unproject with is the one mistake that silently misplaces every widget
+ * on screen while clicks keep landing elsewhere.
+ *
+ * <p>{@link #update(float)} returns {@code true} when a widget has consumed the frame (e.g., a
  * navigation action fired after a click-feedback delay). When this occurs, the screen <em>must</em>
  * return from {@code render()} immediately without issuing any draw calls — a screen transition may
  * already be in progress:
@@ -62,7 +75,8 @@ import java.util.Objects;
  * <pre>{@code
  * public void render(float delta) {
  *     if (uiLayer.update(delta)) return;
- *     // ... draw ...
+ *     // ... draw world ...
+ *     uiLayer.render(batch, outlineRenderer);
  * }
  * }</pre>
  */
@@ -88,14 +102,32 @@ public final class UiLayer {
   /** Hit-test / scroll order — descending z (highest z tested first/on top). */
   private List<Entry> descending = List.of();
 
+  /**
+   * Z-order the {@linkplain #setRoot layout root} occupies. Deliberately very negative so ordinary
+   * widgets added with {@link #add} sit above it by default.
+   */
+  public static final int ROOT_Z_ORDER = Integer.MIN_VALUE + 1;
+
+  /** Full-screen layout tree, or {@code null}. See {@link #setRoot(LayoutElement)}. */
+  private LayoutElement root;
+
+  /** Cursor position in world space, refreshed once per frame by {@link #syncPointer()}. */
   private final Vector3 pointer = new Vector3();
 
   /**
-   * A world point guaranteed to be outside every widget — used to clear hover on occluded widgets.
+   * Frame id the {@link #pointer} was last unprojected on, so the several places that need the
+   * cursor in world space during one frame share a single unprojection instead of repeating it.
    */
-  private static final float OCCLUDED_X = -1e9f;
+  private long pointerFrameId = -1L;
 
-  private static final float OCCLUDED_Y = -1e9f;
+  /**
+   * Separate scratch for unprojecting the coordinates carried by an input <em>event</em>.
+   *
+   * <p>Kept distinct from {@link #pointer} on purpose: input events are delivered during the same
+   * frame as the render that follows, so writing event coordinates into the cached cursor would
+   * leave the frame's hover pass reading a stale position.
+   */
+  private final Vector3 eventPointer = new Vector3();
 
   /** The widget currently holding keyboard focus, or {@code null}. */
   private Focusable focused;
@@ -136,7 +168,85 @@ public final class UiLayer {
     Objects.requireNonNull(widget, "widget must not be null");
     entries.add(new Entry(widget, zOrder));
     rebuildSorted();
+    pushClipContext(widget);
     widget.layout();
+  }
+
+  /**
+   * Installs {@code root} as this layer's full-screen layout root at z-order {@link #ROOT_Z_ORDER}.
+   *
+   * <p>On every layout pass the root is assigned the whole viewport — {@code (0, 0,
+   * viewport.getWorldWidth(), viewport.getWorldHeight())} — and the rest of the tree sizes itself
+   * from there. This is the <em>only</em> place the world's dimensions enter the UI toolkit, and
+   * they come from the viewport this layer already owns, so no widget needs to know the resolution
+   * and nothing has to be re-specified when it changes. A window resize re-runs it for free via the
+   * existing {@code resize() → layout()} path.
+   *
+   * <p>Replaces any previous root. Widgets added with {@link #add} are unaffected and can be
+   * layered above or below by z-order.
+   *
+   * @param root the layout tree to fill the screen, or {@code null} to remove the current root
+   */
+  public void setRoot(LayoutElement root) {
+    if (this.root != null) {
+      remove(this.root);
+    }
+    this.root = root;
+    if (root != null) {
+      // Assign the viewport rectangle before add(), because add() lays the widget out immediately
+      // and
+      // would otherwise measure it against a zero-sized frame.
+      layoutRoot();
+      add(root, ROOT_Z_ORDER);
+    }
+  }
+
+  /** Returns the layout root set by {@link #setRoot(LayoutElement)}, or {@code null}. */
+  public LayoutElement getRoot() {
+    return root;
+  }
+
+  /**
+   * Returns every widget in this layer in ascending z-order (lowest z first), including the
+   * {@linkplain #setRoot layout root}.
+   *
+   * <p>A read-only snapshot of the same order {@link #draw(PolygonSpriteBatch)} uses, provided so a
+   * caller can walk the whole widget tree — {@link #getRoot()} alone misses anything added with
+   * {@link #add(UiWidget, int)}, which is how dialogs, popups and tooltips get onto a layer.
+   * Mutating the layer while iterating the returned list is safe: the list is a copy of the entry
+   * order, not a live view.
+   */
+  public List<UiWidget> widgets() {
+    List<UiWidget> out = new ArrayList<>(ascending.size());
+    for (Entry e : ascending) {
+      out.add(e.widget);
+    }
+    return List.copyOf(out);
+  }
+
+  /** Assigns the viewport rectangle to the layout root, if one is set. */
+  private void layoutRoot() {
+    if (root == null) return;
+    root.setBounds(0f, 0f, viewport.getWorldWidth(), viewport.getWorldHeight());
+  }
+
+  /**
+   * Supplies this layer's viewport and camera to every {@link Clippable} in {@code widget}'s
+   * subtree.
+   *
+   * <p>Done here because this layer is the one object that already holds both, which spares every
+   * clipping widget from taking them through its constructor and spares game code from threading
+   * them down the tree.
+   */
+  private void pushClipContext(UiWidget widget) {
+    if (widget instanceof Clippable clippable) {
+      clippable.setClipContext(viewport, camera);
+    }
+    if (widget instanceof CompositeWidget composite) {
+      for (UiWidget child : composite.children()) {
+        pushClipContext(child);
+      }
+    }
   }
 
   /** Removes {@code widget} from this layer. No-op if the widget is not present. */
@@ -145,9 +255,10 @@ public final class UiLayer {
     rebuildSorted();
   }
 
-  /** Removes all widgets from this layer. */
+  /** Removes all widgets from this layer, including the {@linkplain #setRoot layout root}. */
   public void clear() {
     entries.clear();
+    root = null;
     ascending = List.of();
     descending = List.of();
   }
@@ -165,10 +276,12 @@ public final class UiLayer {
   // -------------------------------------------------------------------------
 
   /**
-   * Calls {@link UiWidget#layout()} on all widgets in ascending z-order. Call from the screen's
-   * {@code resize()} after updating the viewport.
+   * Assigns the viewport rectangle to the {@linkplain #setRoot layout root}, then calls {@link
+   * UiWidget#layout()} on all widgets in ascending z-order. Call from the screen's {@code resize()}
+   * after updating the viewport.
    */
   public void layout() {
+    layoutRoot();
     for (Entry e : ascending) {
       e.widget.layout();
     }
@@ -221,14 +334,11 @@ public final class UiLayer {
    * @return {@code true} if any widget consumed the frame.
    */
   public boolean update(float delta) {
-    pointer.set(Gdx.input.getX(), Gdx.input.getY(), 0f);
-    viewport.unproject(pointer);
+    syncPointer();
     int blockZ = blockingZForPointer();
     for (Entry e : ascending) {
       if (e.zOrder < blockZ) {
-        // Occluded by a higher-z opaque surface — clear hover by polling
-        // a point that lies outside every widget's bounds.
-        e.widget.updateHover(OCCLUDED_X, OCCLUDED_Y);
+        e.widget.clearHover(); // occluded by a higher-z opaque surface
       } else {
         e.widget.updateHover(pointer.x, pointer.y);
       }
@@ -240,17 +350,28 @@ public final class UiLayer {
   }
 
   /**
+   * Unprojects the cursor into {@link #pointer}, at most once per frame.
+   *
+   * <p>The cursor position is needed by {@link #update(float)}, the occlusion scan, and both
+   * outline passes. Unprojecting it separately in each was redundant work every frame and, worse,
+   * meant those passes could in principle disagree about where the pointer was.
+   */
+  private void syncPointer() {
+    long frameId = Gdx.graphics.getFrameId();
+    if (frameId == pointerFrameId) return;
+    pointerFrameId = frameId;
+    pointer.set(Gdx.input.getX(), Gdx.input.getY(), 0f);
+    viewport.unproject(pointer);
+  }
+
+  /**
    * Returns the z-order of the highest opaque widget currently occluding the pointer, or {@link
    * Integer#MIN_VALUE} if nothing blocks it. Widgets with a strictly lower z-order than the
    * returned value are considered occluded and must not receive hover or outline treatment this
    * frame.
-   *
-   * <p>Polls the cursor afresh so it is safe to call from both {@link #update(float)} and the
-   * outline-capture pass.
    */
   private int blockingZForPointer() {
-    pointer.set(Gdx.input.getX(), Gdx.input.getY(), 0f);
-    viewport.unproject(pointer);
+    syncPointer();
     for (Entry e : descending) { // highest z first
       if (e.widget.blocksPointer(pointer.x, pointer.y)) {
         return e.zOrder;
@@ -353,10 +474,86 @@ public final class UiLayer {
   // -------------------------------------------------------------------------
 
   /**
-   * Draws all widgets in ascending z-order (lowest z drawn first/behind). Must be called inside a
-   * {@code batch.begin()} / {@code batch.end()} block.
+   * Draws this layer as one self-contained pass: sets the batch projection from this layer's own
+   * camera, opens and closes the {@code begin()}/{@code end()} block, and draws every widget in
+   * ascending z-order.
+   *
+   * <p><b>Prefer this over {@link #draw(PolygonSpriteBatch)}.</b> The layer already owns the {@link
+   * Viewport} and {@link OrthographicCamera} its widgets were laid out in, so letting it own the
+   * projection makes the contract impossible to get wrong. A caller that sets a different (or no)
+   * projection silently renders the UI at the wrong scale — screen-space widget coordinates would
+   * no longer match the coordinates {@link #update(float)} and {@link #inputProcessor()} hit-test
+   * against.
+   *
+   * @param batch the batch to draw with; must <em>not</em> already be drawing
+   * @throws IllegalStateException if {@code batch} is already inside a {@code begin()} block
+   */
+  public void render(PolygonSpriteBatch batch) {
+    render(batch, null);
+  }
+
+  /**
+   * As {@link #render(PolygonSpriteBatch)}, but additionally drives the selection-outline cycle for
+   * any {@link OutlineCaptureSource} widgets in the tree: FBO capture before {@code begin()}, then
+   * the ring blit and post-outline overlays inside the block. Screens therefore get working UI
+   * outlines without hand-sequencing {@link #captureOutlines}, {@link #drawOutlines} and {@link
+   * #drawPostOutlines} in the right order relative to {@code begin()}.
+   *
+   * @param batch the batch to draw with; must <em>not</em> already be drawing
+   * @param sor the shared outline renderer, or {@code null} to skip the outline passes entirely
+   * @throws IllegalStateException if {@code batch} is already inside a {@code begin()} block
+   */
+  public void render(PolygonSpriteBatch batch, SelectionOutlineRenderer sor) {
+    Objects.requireNonNull(batch, "batch must not be null");
+    if (batch.isDrawing()) {
+      throw new IllegalStateException(
+          "batch must not already be drawing: UiLayer.render owns begin()/end() — "
+              + "use draw(batch) to append this layer to an existing block");
+    }
+    // A world-only screen keeps an empty layer; skip the begin/end pair and the FBO capture
+    // entirely.
+    if (ascending.isEmpty()) return;
+    camera.update();
+    // Outline capture rebinds the FBO and must precede begin().
+    if (sor != null) {
+      captureOutlines(sor, batch, camera.combined, viewport);
+    }
+    batch.setProjectionMatrix(camera.combined);
+    batch.begin();
+    draw(batch);
+    if (sor != null) {
+      drawOutlines(sor, batch);
+      drawPostOutlines(batch);
+    }
+    batch.end();
+  }
+
+  /**
+   * Draws all widgets in ascending z-order (lowest z drawn first/behind).
+   *
+   * <p>Low-level entry point for composing this layer into an existing {@code batch.begin()}/{@code
+   * end()} block. The caller is responsible for having set the projection matrix to this layer's
+   * {@linkplain #getCamera() camera}; both preconditions are checked and fail fast, because getting
+   * either wrong renders the whole UI at the wrong scale while hit-testing continues to use the
+   * correct one. {@link #render(PolygonSpriteBatch)} handles both for you.
+   *
+   * @throws IllegalStateException if {@code batch} is not drawing, or if its projection matrix does
+   *     not match this layer's camera
    */
   public void draw(PolygonSpriteBatch batch) {
+    if (!batch.isDrawing()) {
+      throw new IllegalStateException(
+          "draw() must be called inside batch.begin()/end() — did you mean render(batch)?");
+    }
+    if (!Arrays.equals(batch.getProjectionMatrix().val, camera.combined.val)) {
+      throw new IllegalStateException(
+          "batch projection matrix does not match this UiLayer's camera: widgets were laid out in "
+              + viewport.getWorldWidth()
+              + "x"
+              + viewport.getWorldHeight()
+              + " world units. Call batch.setProjectionMatrix(uiLayer.getCamera().combined) first, "
+              + "or use render(batch) which does it for you.");
+    }
     for (Entry e : ascending) {
       e.widget.draw(batch);
     }
@@ -383,10 +580,10 @@ public final class UiLayer {
       @Override
       public boolean touchDown(int screenX, int screenY, int pointerId, int button) {
         if (button != Input.Buttons.LEFT) return false;
-        pointer.set(screenX, screenY, 0f);
-        viewport.unproject(pointer);
+        eventPointer.set(screenX, screenY, 0f);
+        viewport.unproject(eventPointer);
         for (Entry e : descending) {
-          if (e.widget.hit(pointer.x, pointer.y)) {
+          if (e.widget.hit(eventPointer.x, eventPointer.y)) {
             dragTarget = e.widget;
             Focusable f = e.widget.hitFocusable();
             if (f != null) setFocus(f);
@@ -401,9 +598,9 @@ public final class UiLayer {
       @Override
       public boolean touchDragged(int screenX, int screenY, int pointerId) {
         if (dragTarget == null) return false;
-        pointer.set(screenX, screenY, 0f);
-        viewport.unproject(pointer);
-        dragTarget.dragged(pointer.x, pointer.y);
+        eventPointer.set(screenX, screenY, 0f);
+        viewport.unproject(eventPointer);
+        dragTarget.dragged(eventPointer.x, eventPointer.y);
         return true;
       }
 
@@ -415,10 +612,10 @@ public final class UiLayer {
 
       @Override
       public boolean scrolled(float amountX, float amountY) {
-        pointer.set(Gdx.input.getX(), Gdx.input.getY(), 0f);
-        viewport.unproject(pointer);
+        eventPointer.set(Gdx.input.getX(), Gdx.input.getY(), 0f);
+        viewport.unproject(eventPointer);
         for (Entry e : descending) {
-          if (e.widget.scrolled(pointer.x, pointer.y, amountX, amountY)) return true;
+          if (e.widget.scrolled(eventPointer.x, eventPointer.y, amountX, amountY)) return true;
         }
         return false;
       }

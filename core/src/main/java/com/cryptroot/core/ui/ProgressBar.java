@@ -4,6 +4,8 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.utils.Align;
 import java.util.Objects;
 
 /**
@@ -35,18 +37,17 @@ import java.util.Objects;
  * progressBar.setBounds(trackX, trackY, trackW, TRACK_H);
  * }</pre>
  */
-public final class ProgressBar extends CompositeWidget {
+public final class ProgressBar extends BoundedWidget {
 
   private static final Color COLOR_TRACK_BG = new Color(0.22f, 0.22f, 0.32f, 1f);
   private static final Color COLOR_FILL = new Color(0.30f, 0.75f, 0.45f, 1f);
 
+  /** Vertical padding used when reporting a natural height. */
+  private static final float LABEL_PADDING_V = 6f;
+
   private final BitmapFont labelFont;
   private final FillTrack fillTrack;
 
-  private float x;
-  private float y;
-  private float w;
-  private float h;
   private float progress;
 
   private final TextLabel pctLabel;
@@ -65,15 +66,17 @@ public final class ProgressBar extends CompositeWidget {
     Objects.requireNonNull(pixel, "pixel must not be null");
     Objects.requireNonNull(labelFont, "labelFont must not be null");
     this.labelFont = labelFont;
-    this.x = x;
-    this.y = y;
-    this.w = w;
-    this.h = h;
     this.progress = Math.max(0f, Math.min(1f, progress));
+    setBounds(x, y, w, h);
 
     fillTrack = new FillTrack(pixel, COLOR_TRACK_BG, COLOR_FILL);
-    pctLabel = new TextLabel(labelFont, pctText(), 0f, 0f);
+    pctLabel = new TextLabel(labelFont, pctText()).setBoxAlign(Align.center);
     addChild(pctLabel);
+  }
+
+  /** Creates a bar sized by its enclosing layout container. */
+  public ProgressBar(Texture pixel, BitmapFont labelFont, float progress) {
+    this(pixel, labelFont, 0f, 0f, 0f, 0f, progress);
   }
 
   // -------------------------------------------------------------------------
@@ -90,33 +93,25 @@ public final class ProgressBar extends CompositeWidget {
     return progress;
   }
 
-  /**
-   * Repositions and resizes the bar. Intended to be called from the parent composite's {@code
-   * doLayout()} so the layout cascade can then position the internal percentage label correctly.
-   */
-  public void setBounds(float x, float y, float w, float h) {
-    this.x = x;
-    this.y = y;
-    this.w = w;
-    this.h = h;
+  // -------------------------------------------------------------------------
+  // BoundedWidget
+  // -------------------------------------------------------------------------
+
+  /** Natural size: wide enough for the percentage text, one standard text bar tall. */
+  @Override
+  public Vector2 preferredSize(Vector2 out) {
+    return out.set(
+        pctLabel.getMeasuredWidth() + LABEL_PADDING_V * 4f,
+        UiHelper.barHeight(labelFont, LABEL_PADDING_V));
   }
 
   @Override
-  public void setPosition(float x, float y) {
-    this.x = x;
-    this.y = y;
-  }
-
-  // -------------------------------------------------------------------------
-  // CompositeWidget
-  // -------------------------------------------------------------------------
-
-  @Override
-  protected void doLayout() {
-    fillTrack.setBounds(x, y, w, h);
-    float pctY = y + (h + labelFont.getCapHeight()) / 2f;
-    pctLabel.setAlign(TextLabel.HAlign.CENTER, w);
-    pctLabel.setPosition(x, pctY);
+  protected void doBoundedLayout() {
+    bounds.set(frame);
+    fillTrack.setBounds(frame.x, frame.y, frame.width, frame.height);
+    // Centre the label in the bar via the shared metric helper rather than an inline cap-height
+    // formula.
+    pctLabel.setBounds(frame.x, frame.y, frame.width, frame.height);
   }
 
   @Override

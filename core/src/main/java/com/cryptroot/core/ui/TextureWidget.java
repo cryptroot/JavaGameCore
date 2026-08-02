@@ -3,6 +3,8 @@ package com.cryptroot.core.ui;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
+import com.badlogic.gdx.math.Vector2;
+import com.cryptroot.core.ui.layout.LayoutElement;
 import java.util.Objects;
 
 /**
@@ -19,7 +21,7 @@ import java.util.Objects;
  * panel.addWidget(bg);   // add before interactive children so it draws behind them
  * }</pre>
  */
-public final class TextureWidget implements UiWidget {
+public final class TextureWidget implements LayoutElement {
 
   private Texture texture;
   private float x;
@@ -44,11 +46,21 @@ public final class TextureWidget implements UiWidget {
   }
 
   /** Repositions and resizes the widget without altering the texture reference. */
+  @Override
   public void setBounds(float x, float y, float w, float h) {
     this.x = x;
     this.y = y;
     this.w = w;
     this.h = h;
+  }
+
+  /**
+   * Natural size is the texture's own pixel dimensions, so a container can size a background image
+   * to its source resolution when nothing else constrains it.
+   */
+  @Override
+  public Vector2 preferredSize(Vector2 out) {
+    return out.set(texture.getWidth(), texture.getHeight());
   }
 
   /** Replaces the texture drawn by this widget. The old texture is not disposed. */

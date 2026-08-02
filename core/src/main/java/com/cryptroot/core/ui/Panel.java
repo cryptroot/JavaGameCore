@@ -4,6 +4,9 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector2;
+import com.cryptroot.core.ui.layout.Insets;
+import com.cryptroot.core.ui.layout.LayoutElement;
 import java.util.Objects;
 
 /**
@@ -22,18 +25,29 @@ import java.util.Objects;
  * <h3>Usage</h3>
  *
  * <pre>{@code
- * Panel panel = new Panel(pixel, 80f, 120f, 900f, 650f);
- * // add widgets to the panel:
- * panel.addWidget(myButton);
- * panel.addWidget(mySlider);
- * uiLayer.add(panel, 0);
+ * // Layout-managed interior — the panel sizes and positions its content:
+ * Panel panel = new Panel(pixel);
+ * panel.setContent(new VStack().padding(Insets.all(12f)).spacing(6f)
+ *         .add(myButton)
+ *         .add(mySlider));
+ * parentStack.add(panel);
+ *
+ * // Or absolute coordinates, for a hand-positioned HUD:
+ * Panel hud = new Panel(pixel, 80f, 120f, 900f, 650f);
+ * hud.addWidget(myLabel);
+ * uiLayer.add(hud, 0);
  * }</pre>
  *
  * <h3>Layout</h3>
  *
- * Call {@link #setBounds(float, float, float, float)} before adding to a {@link UiLayer} (or before
- * calling {@link #layout()} manually). Children added via {@link #addWidget} are laid out in the
- * standard {@link CompositeWidget} cascade.
+ * Geometry is the inherited {@link BoundedWidget#setBounds} contract: an outer rectangle with a
+ * bottom-left origin, which a layout container may assign. {@link #setContent(LayoutElement)}
+ * content is given exactly {@link #getContentBounds()} each pass, so it respects subclass chrome
+ * insets automatically. Children added via {@link #addWidget} keep their own coordinates and are
+ * laid out in the standard {@link CompositeWidget} cascade.
+ *
+ * <p>Note a plain {@code Panel} does not clip its children — content larger than the panel
+ * overflows it. Wrap the content in a container with {@code clipChildren(true)} when that matters.
  */
 public class Panel extends BoundedWidget {
 
@@ -45,10 +59,11 @@ public class Panel extends BoundedWidget {
   private final PixelRect bg;
   private final PixelBorder border;
 
-  private float x;
-  private float y;
-  private float w;
-  private float h;
+  /** Layout-managed content, assigned {@link #getContentBounds()} on every pass. */
+  private LayoutElement content;
+
+  /** Scratch rectangle so {@link #doBoundedLayout()} allocates nothing. */
+  private final Rectangle contentScratch = new Rectangle();
 
   private boolean opaque = false;
   private boolean visible = true;
@@ -71,6 +86,14 @@ public class Panel extends BoundedWidget {
         COLOR_BG_DEFAULT.cpy(),
         COLOR_BORDER_DEFAULT.cpy(),
         BORDER_THICKNESS_DEFAULT);
+  }
+
+  /**
+   * Creates a panel with default colours and no geometry, for use inside a layout container that
+   * will assign its bounds.
+   */
+  public Panel(Texture pixel) {
+    this(pixel, 0f, 0f, 0f, 0f);
   }
 
   /**
@@ -97,10 +120,7 @@ public class Panel extends BoundedWidget {
     Objects.requireNonNull(pixel, "pixel must not be null");
     Objects.requireNonNull(bgColor, "bgColor must not be null");
     Objects.requireNonNull(borderColor, "borderColor must not be null");
-    this.x = x;
-    this.y = y;
-    this.w = w;
-    this.h = h;
+    setBounds(x, y, w, h);
     bg = new PixelRect(pixel, bgColor);
     border = new PixelBorder(pixel, borderThickness, borderColor);
     // bg first (drawn behind), border last (drawn in front).
@@ -113,26 +133,47 @@ public class Panel extends BoundedWidget {
   // -------------------------------------------------------------------------
 
   /**
-   * Repositions and resizes the panel. Call before {@link #layout()} or before being added to a
-   * {@link UiLayer} (which calls {@code layout()} automatically).
-   */
-  public void setBounds(float x, float y, float w, float h) {
-    this.x = x;
-    this.y = y;
-    this.w = w;
-    this.h = h;
-  }
-
-  /**
-   * Adds a widget as a child of this panel. It will participate in the standard {@link
-   * CompositeWidget} lifecycle (layout, draw, hover, reset).
+   * Adds a widget as a child of this panel at whatever coordinates the widget itself carries. It
+   * will participate in the standard {@link CompositeWidget} lifecycle (layout, draw, hover,
+   * reset).
    *
-   * <p>This is a convenience alias for the protected {@link #addChild} method, making the Panel's
-   * public API explicit.
+   * <p>This is a convenience alias for the protected {@link #addChild} method. For content that
+   * should fill and be positioned by the panel, prefer {@link #setContent(LayoutElement)}.
    */
   public void addWidget(UiWidget widget) {
     Objects.requireNonNull(widget, "widget must not be null");
     addChild(widget);
+  }
+
+  /**
+   * Sets the panel's layout-managed content. On every layout pass {@code content} is assigned
+   * exactly {@link #getContentBounds()}, so it automatically respects the chrome insets of
+   * subclasses — a {@link CloseablePanel}'s title bar or a {@link TabbedPanel}'s tab strip — with
+   * no knowledge of them.
+   *
+   * <p>This is the hinge between panel chrome and the layout containers: pass a {@link
+   * com.cryptroot.core.ui.layout.VStack VStack} and the panel's interior lays itself out.
+   *
+   * <pre>{@code
+   * Panel rooms = new Panel(pixel);
+   * rooms.setContent(new VStack().padding(Insets.all(12f)).spacing(6f).add(roomRows()));
+   * }</pre>
+   *
+   * <p>Replaces any previously set content. Pass {@code null} to clear it.
+   */
+  public void setContent(LayoutElement newContent) {
+    if (content != null) {
+      removeChild(content);
+    }
+    content = newContent;
+    if (newContent != null) {
+      addChild(newContent);
+    }
+  }
+
+  /** Returns the layout-managed content set by {@link #setContent}, or {@code null}. */
+  public LayoutElement getContent() {
+    return content;
   }
 
   /**
@@ -164,34 +205,88 @@ public class Panel extends BoundedWidget {
 
   /** Returns the left edge of the panel in world coordinates. */
   public float getPanelX() {
-    return x;
+    return frame.x;
   }
 
   /** Returns the bottom edge of the panel in world coordinates. */
   public float getPanelY() {
-    return y;
+    return frame.y;
   }
 
   /** Returns the width of the panel. */
   public float getPanelW() {
-    return w;
+    return frame.width;
   }
 
   /** Returns the height of the panel. */
   public float getPanelH() {
-    return h;
+    return frame.height;
+  }
+
+  /**
+   * The space this panel's chrome consumes on each edge. Zero for a plain {@code Panel}; subclasses
+   * with a title bar ({@link CloseablePanel}) or a tab strip ({@link TabbedPanel}) report it here.
+   *
+   * <p>Overriding this one method is all a subclass needs to do for both {@link
+   * #getContentBounds()} and {@link #preferredSize(Vector2)} to account for its chrome — the two
+   * cannot drift apart.
+   */
+  protected Insets chromeInsets() {
+    return Insets.NONE;
   }
 
   /**
    * Returns the inset content area of this panel as a {@link Rectangle}. For a plain {@code Panel}
-   * this is identical to the full bounds; subclasses (e.g., {@link TabbedPanel}) shrink it to
-   * exclude chrome like tab strips.
+   * this is identical to the full bounds; subclasses shrink it to exclude chrome like tab strips.
    *
    * <p>The returned rectangle is a fresh instance on every call — it is not cached, so callers can
-   * store it without aliasing concerns.
+   * store it without aliasing concerns. Use {@link #getContentBounds(Rectangle)} on layout paths.
    */
   public Rectangle getContentBounds() {
-    return new Rectangle(x, y, w, h);
+    return getContentBounds(new Rectangle());
+  }
+
+  /**
+   * Allocation-free {@link #getContentBounds()}: writes the content area into {@code out} and
+   * returns it.
+   */
+  public Rectangle getContentBounds(Rectangle out) {
+    return contentBoundsFor(frame, chromeInsets(), out);
+  }
+
+  /**
+   * The content rectangle for a panel of the given outer rectangle and chrome insets, with width
+   * and height clamped at zero.
+   *
+   * <p>Extracted as a pure static so panel chrome arithmetic is unit-testable without constructing
+   * a {@link Texture}.
+   *
+   * @return {@code out}, for chaining
+   */
+  public static Rectangle contentBoundsFor(Rectangle frame, Insets chrome, Rectangle out) {
+    Objects.requireNonNull(frame, "frame must not be null");
+    Objects.requireNonNull(chrome, "chrome must not be null");
+    Objects.requireNonNull(out, "out must not be null");
+    return out.set(
+        frame.x + chrome.left(),
+        frame.y + chrome.bottom(),
+        Math.max(0f, frame.width - chrome.horizontal()),
+        Math.max(0f, frame.height - chrome.vertical()));
+  }
+
+  /**
+   * Natural size: the {@linkplain #setContent content}'s natural size grown by {@link
+   * #chromeInsets()}. Falls back to the assigned frame size when there is no layout-managed
+   * content, since a decorative panel has no intrinsic size of its own.
+   */
+  @Override
+  public Vector2 preferredSize(Vector2 out) {
+    if (content == null) {
+      return super.preferredSize(out);
+    }
+    content.preferredSize(out);
+    Insets chrome = chromeInsets();
+    return out.set(out.x + chrome.horizontal(), out.y + chrome.vertical());
   }
 
   // -------------------------------------------------------------------------
@@ -200,9 +295,14 @@ public class Panel extends BoundedWidget {
 
   @Override
   protected void doBoundedLayout() {
-    bounds.set(x, y, w, h);
-    bg.setBounds(x, y, w, h);
-    border.setBounds(x, y, w, h);
+    bounds.set(frame);
+    bg.setBounds(frame.x, frame.y, frame.width, frame.height);
+    border.setBounds(frame.x, frame.y, frame.width, frame.height);
+    if (content != null) {
+      getContentBounds(contentScratch);
+      content.setBounds(
+          contentScratch.x, contentScratch.y, contentScratch.width, contentScratch.height);
+    }
   }
 
   /**
@@ -215,13 +315,11 @@ public class Panel extends BoundedWidget {
   @Override
   public boolean hit(float worldX, float worldY) {
     if (!visible) return false;
-    // Iterate registered children in reverse-insertion order (topmost first).
-    // Must NOT call super.hit() here because BoundedWidget.hit() is a raw
-    // bounds check that would short-circuit before any child is tested.
-    var kids = children();
-    for (int i = kids.size() - 1; i >= 0; i--) {
-      if (kids.get(i).hit(worldX, worldY)) return true;
-    }
+    // Offer the point to children (topmost first) via CompositeWidget's helper, which also records
+    // the consumer so a nested Focusable can still be found by hitFocusable(). Must NOT call
+    // super.hit() here: BoundedWidget.hit() is a raw bounds check that would short-circuit before
+    // any child is tested.
+    if (hitChildren(worldX, worldY)) return true;
     return opaque && bounds.contains(worldX, worldY);
   }
 
@@ -254,7 +352,15 @@ public class Panel extends BoundedWidget {
    */
   @Override
   public boolean blocksPointer(float worldX, float worldY) {
-    return visible && opaque && bounds.contains(worldX, worldY);
+    return visible && opaque && contains(worldX, worldY);
+  }
+
+  /**
+   * An invisible panel contains nothing, so it never absorbs hover or occludes what is beneath it.
+   */
+  @Override
+  public boolean contains(float worldX, float worldY) {
+    return visible && bounds.contains(worldX, worldY);
   }
 
   @Override

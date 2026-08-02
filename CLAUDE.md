@@ -73,6 +73,25 @@ Worked examples:
   - The same applies to every other owner: `World` owns entities, `RenderPipeline` owns draw
     order, `GameContext` owns services, `TimeScale` owns time. Do not shadow, duplicate or
     side-step them with local state.
+- **Framework code never names a game — not even in a comment.** `core` and `tiled` must read as if
+  no particular game exists, in prose exactly as in code. That means no game class names
+  (`FooScreen`, `FooGameContext`), no game domain nouns (rooms, guests, employees, towers, waves),
+  no game button labels or content strings, and no "this is how <the game> does it" asides — in
+  Javadoc, inline comments, `CLAUDE.md`/`CAPABILITIES.md`, test names and test comments alike. It
+  applies to the whole module, `src/test` included: a test helper's example is documentation of the
+  framework, so it must not encode one consumer's vocabulary either.
+  - Describe the **pattern**, not the caller: "a screen that rebuilds its rows when the data changes
+    replaces the widget a reference points at" — not "`<GameScreen>.refresh()` recreates every row,
+    so do this instead".
+  - Name examples generically: `leftPanel`/`rightPanel`, `MyScreen`, `MyGameContext`, `Confirm`,
+    `Item 1`, `Save`. Not `<domain>Panel`, a label lifted from a game's string table, or a character
+    or entity name from one.
+  - The reason is not tidiness. A framework comment that names a game becomes wrong the moment the
+    game changes and stale the moment a second game appears, and it quietly invites the next reader
+    to reach for that game's type — which is exactly how the dependency direction gets inverted. The
+    game's own module is where its vocabulary belongs; keep it there.
+  - The one legitimate exception is a pointer to the bundled sample (`demo`, "Cave Defense") used as
+    a worked example of framework usage. Even then, prefer describing the mechanism.
 - **No static singletons.** There is no `GameManager.Instance`. Shared services live on a
   `GameContext` subclass and are passed into screens (see `core.GameContext`,
   `core.screen.BaseGameScreen`). Port Unity singletons to `GameContext` fields.

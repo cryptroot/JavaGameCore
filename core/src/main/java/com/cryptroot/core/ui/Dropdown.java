@@ -3,6 +3,8 @@ package com.cryptroot.core.ui;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.utils.Align;
 import com.cryptroot.core.event.Signal;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,9 +57,9 @@ public final class Dropdown<T> extends BoundedWidget {
 
   private final UiSkin skin;
   private final Texture pixel;
-  private final float fieldX;
-  private final float fieldY;
-  private final float fieldW;
+
+  /** Scratch for measuring, so layout allocates nothing. */
+  private final Vector2 scratch = new Vector2();
 
   private List<T> items = new ArrayList<>();
   private Function<T, String> labeller = Object::toString;
@@ -80,15 +82,26 @@ public final class Dropdown<T> extends BoundedWidget {
     Objects.requireNonNull(pixel, "pixel must not be null");
     this.skin = skin;
     this.pixel = pixel;
-    this.fieldX = x;
-    this.fieldY = y;
-    this.fieldW = w;
+    setBounds(x, y, w, skin.font().getCapHeight() + PAD_V_BOT + PAD_V_TOP);
 
-    labelWidget = new TextLabel(skin.font(), "— ▾", x + PAD_H, 0f, LABEL_COLOR);
+    labelWidget = new TextLabel(skin.font(), "— ▾", LABEL_COLOR);
     addChild(labelWidget);
 
     popup = new PopupMenu(pixel, skin.font());
     addChild(popup);
+  }
+
+  /** Creates a dropdown sized by its enclosing layout container. */
+  public Dropdown(UiSkin skin, Texture pixel) {
+    this(skin, pixel, 0f, 0f, 0f);
+    setBounds(0f, 0f, 0f, 0f);
+  }
+
+  /** Natural size: the theme's minimum control width by one padded text row. */
+  @Override
+  public Vector2 preferredSize(Vector2 out) {
+    return out.set(
+        skin.theme().minControlWidth(), skin.font().getCapHeight() + PAD_V_BOT + PAD_V_TOP);
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
@@ -125,10 +138,15 @@ public final class Dropdown<T> extends BoundedWidget {
 
   @Override
   protected void doBoundedLayout() {
-    float h = skin.font().getCapHeight() + PAD_V_BOT + PAD_V_TOP;
-    bounds.set(fieldX, fieldY, fieldW, h);
-    float labelY = fieldY + PAD_V_BOT + skin.font().getCapHeight();
-    labelWidget.setPosition(fieldX + PAD_H, labelY);
+    if (frame.width <= 0f || frame.height <= 0f) {
+      Vector2 natural = preferredSize(scratch);
+      if (frame.width <= 0f) frame.width = natural.x;
+      if (frame.height <= 0f) frame.height = natural.y;
+    }
+    bounds.set(frame);
+    labelWidget.setBoxAlign(Align.left | Align.center);
+    labelWidget.setBounds(
+        frame.x + PAD_H, frame.y, Math.max(0f, frame.width - PAD_H * 2f), frame.height);
   }
 
   @Override

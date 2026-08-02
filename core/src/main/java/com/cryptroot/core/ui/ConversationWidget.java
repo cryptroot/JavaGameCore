@@ -92,8 +92,6 @@ public final class ConversationWidget extends BoundedWidget implements DialogueV
   private final MessageBox messageBox;
   private final ChoiceList choiceList;
 
-  private float cx, cy, cw, ch;
-
   private Speaker activeSpeaker = null;
 
   // ---- Runner binding ----
@@ -122,10 +120,7 @@ public final class ConversationWidget extends BoundedWidget implements DialogueV
   public ConversationWidget(float x, float y, float w, float h, Texture pixel, BitmapFont font) {
     Objects.requireNonNull(pixel, "pixel must not be null");
     Objects.requireNonNull(font, "font must not be null");
-    this.cx = x;
-    this.cy = y;
-    this.cw = w;
-    this.ch = h;
+    setBounds(x, y, w, h);
 
     messageBox = new MessageBox(pixel, font, x, y, w, h * MSG_BOX_H_RATIO);
     addChild(messageBox);
@@ -226,13 +221,6 @@ public final class ConversationWidget extends BoundedWidget implements DialogueV
     runner.start();
   }
 
-  public void setBounds(float x, float y, float w, float h) {
-    this.cx = x;
-    this.cy = y;
-    this.cw = w;
-    this.ch = h;
-  }
-
   // -------------------------------------------------------------------------
   // Runner wiring
   // -------------------------------------------------------------------------
@@ -247,7 +235,7 @@ public final class ConversationWidget extends BoundedWidget implements DialogueV
     deriveParticipants(r.graph());
     showingChoices = false;
     awaitingAction = false;
-    if (cw > 0 && ch > 0) layout();
+    if (frame.width > 0f && frame.height > 0f) layout();
   }
 
   private void disconnectRunner() {
@@ -374,7 +362,12 @@ public final class ConversationWidget extends BoundedWidget implements DialogueV
 
   @Override
   protected void doBoundedLayout() {
-    bounds.set(cx, cy, cw, ch);
+    bounds.set(frame);
+
+    float cx = frame.x;
+    float cy = frame.y;
+    float cw = frame.width;
+    float ch = frame.height;
 
     float msgH = ch * MSG_BOX_H_RATIO;
     messageBox.setBounds(cx, cy, cw, msgH);

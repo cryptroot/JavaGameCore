@@ -6,6 +6,8 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.utils.Align;
 import com.cryptroot.core.event.Signal;
 import com.cryptroot.core.event.Signal0;
 import java.util.Objects;
@@ -57,9 +59,9 @@ public final class InputField extends BoundedWidget implements Focusable {
 
   private final UiSkin skin;
   private final Texture pixel;
-  private final float x;
-  private final float y;
-  private final float width;
+
+  /** Scratch for measuring, so layout allocates nothing. */
+  private final Vector2 scratch = new Vector2();
 
   /** Renders the visible (possibly left-truncated) input text. Not a registered child. */
   private final TextLabel visibleLabel;
@@ -77,6 +79,13 @@ public final class InputField extends BoundedWidget implements Focusable {
   private float fieldHeight;
   private float textAreaX;
   private float textAreaW;
+
+  /**
+   * Y the text is drawn at, resolved in {@link #doBoundedLayout()} — the <em>top</em> of the cap
+   * band, which is the coordinate {@code BitmapFont.draw} takes. Stored rather than recomputed in
+   * {@code doAfterDraw} so the caret cannot drift away from the glyphs it sits among.
+   */
+  private float textBaseline;
 
   private final StringBuilder text = new StringBuilder();
   private int cursorPos = 0;
@@ -101,14 +110,27 @@ public final class InputField extends BoundedWidget implements Focusable {
     Objects.requireNonNull(placeholder, "placeholder must not be null");
     this.skin = skin;
     this.pixel = pixel;
-    this.x = x;
-    this.y = y;
-    this.width = width;
+    setBounds(x, y, width, UiHelper.barHeight(skin.font(), PADDING_V));
 
     visibleLabel = new TextLabel(skin.font(), "", 0f, 0f);
     placeholderLabel = new TextLabel(skin.font(), placeholder, 0f, 0f, COLOR_PLACEHOLDER);
     // Not registered as children — drawn manually in doDraw() so we control
     // exactly when each appears and the cursor is layered above in doAfterDraw().
+  }
+
+  /** Creates a field sized by its enclosing layout container. */
+  public InputField(UiSkin skin, Texture pixel, String placeholder) {
+    this(skin, pixel, 0f, 0f, 0f, placeholder);
+    setBounds(0f, 0f, 0f, 0f);
+  }
+
+  /**
+   * Natural size: the theme's minimum control width by one standard text bar. A field has no
+   * content width of its own — it is meant to be stretched by its container.
+   */
+  @Override
+  public Vector2 preferredSize(Vector2 out) {
+    return out.set(skin.theme().minControlWidth(), UiHelper.barHeight(skin.font(), PADDING_V));
   }
 
   public String getText() {
@@ -130,12 +152,20 @@ public final class InputField extends BoundedWidget implements Focusable {
 
   @Override
   protected void doBoundedLayout() {
-    fieldHeight = UiHelper.barHeight(skin.font(), PADDING_V);
-    textAreaX = x + PADDING_H;
-    textAreaW = width - PADDING_H * 2f - CURSOR_WIDTH;
-    float textBaseline = y + PADDING_V + skin.font().getCapHeight();
+    if (frame.width <= 0f || frame.height <= 0f) {
+      Vector2 natural = preferredSize(scratch);
+      if (frame.width <= 0f) frame.width = natural.x;
+      if (frame.height <= 0f) frame.height = natural.y;
+    }
+    bounds.set(frame);
 
-    bounds.set(x, y, width, fieldHeight);
+    fieldHeight = frame.height;
+    textAreaX = frame.x + PADDING_H;
+    textAreaW = Math.max(0f, frame.width - PADDING_H * 2f - CURSOR_WIDTH);
+
+    // Vertically centre the text in the field via the shared metric helper.
+    textBaseline =
+        UiHelper.baselineIn(frame.y, frame.height, skin.font().getCapHeight(), Align.center);
 
     visibleLabel.setPosition(textAreaX, textBaseline);
     visibleLabel.layout();
@@ -175,8 +205,14 @@ public final class InputField extends BoundedWidget implements Focusable {
     glMeasure.setText(skin.font(), visibleBeforeCursor);
     float cursorX = textAreaX + glMeasure.width;
 
+    // The caret must span the same band as the glyphs: [baseline - capHeight, baseline]. batch.draw
+    // grows upwards from the y it is given, while textBaseline is the *top* of the cap band, so the
+    // rectangle starts a cap height below it. Passing textBaseline directly drew the caret one
+    // whole
+    // cap height above the text.
+    float capHeight = skin.font().getCapHeight();
     batch.setColor(COLOR_CURSOR);
-    batch.draw(pixel, cursorX, y + PADDING_V, CURSOR_WIDTH, skin.font().getCapHeight());
+    batch.draw(pixel, cursorX, textBaseline - capHeight, CURSOR_WIDTH, capHeight);
     batch.setColor(Color.WHITE);
   }
 
@@ -282,37 +318,47 @@ public final class InputField extends BoundedWidget implements Focusable {
   // -------------------------------------------------------------------------
 
   /**
-   * Returns the largest suffix of the current text that fits within {@code maxWidth} using the
-   * cached {@link #glMeasure} — no object allocation.
+   * Returns the index of the first visible character: the smallest {@code start} for which the
+   * suffix {@code text[start..]} fits within {@code maxWidth}.
+   *
+   * <p>Found by binary search over the start index. The previous linear scan re-measured a fresh
+   * suffix for every character it skipped, making this O(n) glyph layouts per call — and it was
+   * called twice per frame, so a long value cost hundreds of text layouts per frame purely to draw
+   * one field. Suffix width shrinks monotonically as {@code start} rises, so bisection is valid and
+   * costs O(log n).
    */
-  private String visibleText(float maxWidth) {
+  private int visibleStartIndex(float maxWidth) {
     String full = text.toString();
     glMeasure.setText(skin.font(), full);
-    if (glMeasure.width <= maxWidth) return full;
+    if (glMeasure.width <= maxWidth) return 0;
 
-    int start = 0;
-    while (start < full.length()) {
-      String sub = full.substring(start);
-      glMeasure.setText(skin.font(), sub);
-      if (glMeasure.width <= maxWidth) return sub;
-      start++;
+    int lo = 0;
+    int hi = full.length(); // the empty suffix always fits
+    while (lo < hi) {
+      int mid = (lo + hi) >>> 1;
+      glMeasure.setText(skin.font(), full.substring(mid));
+      if (glMeasure.width <= maxWidth) {
+        hi = mid; // fits — try to keep more characters
+      } else {
+        lo = mid + 1;
+      }
     }
-    return "";
+    return lo;
+  }
+
+  /** The largest suffix of the current text that fits within {@code maxWidth}. */
+  private String visibleText(float maxWidth) {
+    return text.substring(visibleStartIndex(maxWidth));
   }
 
   /**
-   * Returns the portion of {@code beforeCursor} that maps to the visible window, used to calculate
-   * the cursor X position consistently with {@link #visibleText}.
+   * Returns the portion of the visible window that precedes the cursor, used to place the caret
+   * consistently with {@link #visibleText}.
    */
   private String visibleTextBeforeCursor(String beforeCursor, float maxWidth) {
-    String visible = visibleText(maxWidth);
-    String full = text.toString();
-    int startIndex = 0;
-    if (!full.isEmpty() && !visible.isEmpty()) {
-      startIndex = full.indexOf(visible);
-      if (startIndex < 0) startIndex = 0;
-    }
-    int visibleCursorPos = MathUtils.clamp(cursorPos - startIndex, 0, visible.length());
-    return visible.substring(0, visibleCursorPos);
+    int startIndex = visibleStartIndex(maxWidth);
+    int visibleLength = text.length() - startIndex;
+    int visibleCursorPos = MathUtils.clamp(cursorPos - startIndex, 0, visibleLength);
+    return text.substring(startIndex, startIndex + visibleCursorPos);
   }
 }

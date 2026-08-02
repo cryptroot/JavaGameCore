@@ -54,13 +54,27 @@ public interface UiWidget {
   }
 
   /**
+   * Returns whether the given world point lies inside this widget's interactive area.
+   *
+   * <p>Strictly a query: unlike {@link #hit(float, float)} it must never arm click feedback, toggle
+   * state, move a slider, or emit a signal. {@code hit} deliberately conflates testing with acting
+   * — that is convenient for input routing but useless for asking "is the pointer over this?",
+   * which is why this method exists and why {@link #blocksPointer} is built on it.
+   *
+   * <p>The default returns {@code false}, which is correct for non-interactive leaves.
+   */
+  default boolean contains(float worldX, float worldY) {
+    return false;
+  }
+
+  /**
    * Returns whether this widget occludes the given world point — i.e. it is an opaque, visible
    * surface that should prevent lower-z widgets from receiving hover (and outline) treatment at
    * that point.
    *
-   * <p>This is a side-effect-free query used by {@link UiLayer} to suppress hover and outline
-   * capture on widgets sitting beneath an opaque panel or dialog. It must <em>not</em> arm any
-   * interaction state (unlike {@link #hit(float, float)}).
+   * <p>Side-effect-free, like {@link #contains}, and normally implemented in terms of it. Used by
+   * {@link UiLayer} to suppress hover and outline capture on widgets sitting beneath an opaque
+   * panel or dialog.
    *
    * <p>The default implementation returns {@code false} — leaf widgets and pass-through containers
    * never occlude anything. Override in opaque surfaces (e.g., {@link Panel#setOpaque(boolean)
@@ -68,6 +82,21 @@ public interface UiWidget {
    */
   default boolean blocksPointer(float worldX, float worldY) {
     return false;
+  }
+
+  /**
+   * Clears any hover state, because the pointer is elsewhere or this widget is occluded.
+   *
+   * <p>An explicit operation rather than "call {@link #updateHover} with coordinates far outside
+   * every widget": the sentinel-coordinate trick worked, but it meant the framework's occlusion
+   * logic depended on no widget ever having bounds at extreme coordinates, and read as a magic
+   * number at every call site.
+   *
+   * <p>The default forwards to {@code updateHover} with a point no finite rectangle can contain, so
+   * existing widgets behave correctly without change; composites override it to recurse cheaply.
+   */
+  default void clearHover() {
+    updateHover(Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY);
   }
 
   /**

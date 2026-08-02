@@ -20,7 +20,8 @@ import com.cryptroot.core.world.WorldCameraController;
  * <p>The standard world pipeline is sealed here so all game-world screens share the same
  * orchestration (via {@link RenderPipeline}).
  *
- * <p>Subclasses populate {@link #world} and wire input in {@code show()}.
+ * <p>Subclasses populate {@link #world} in {@link #onShow()} and wire input by overriding {@link
+ * #inputProcessor()}.
  *
  * @param <C> the concrete {@link GameContext} subclass for this game
  */
@@ -60,7 +61,7 @@ public abstract class BaseGameScreen<C extends GameContext> extends BaseScreen<C
     pipeline.update(world, scaledDelta);
     pipeline.processHover(world, mouse.x, mouse.y, scaledDelta);
     pipeline.processCollisions(world);
-    pipeline.render(world, worldCamera.camera(), uiLayer);
+    pipeline.render(world, worldCamera.camera());
   }
 
   // -------------------------------------------------------------------------

@@ -1,7 +1,9 @@
 package com.cryptroot.core.ui;
 
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.math.Vector2;
 import com.cryptroot.core.event.Signal;
+import com.cryptroot.core.ui.layout.VStack;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -26,7 +28,7 @@ import java.util.Objects;
  * <p>The first item is selected by default. Use {@link #select(int)} to change the selection
  * programmatically without emitting {@link #onSelectionChanged}.
  */
-public final class RadioGroup extends CompositeWidget {
+public final class RadioGroup extends BoundedWidget {
 
   /** Fires with the index of the newly selected item on every selection change. */
   public final Signal<Integer> onSelectionChanged = new Signal<>();
@@ -37,34 +39,39 @@ public final class RadioGroup extends CompositeWidget {
    */
   private final List<Checkbox> checkboxes;
 
-  private final float x;
-  private final float startY;
-  private final float spacing;
+  /**
+   * The actual vertical arrangement, delegated to {@link VStack} rather than re-implemented.
+   *
+   * <p>This class previously stacked its checkboxes with its own {@code startY - i * spacing}
+   * arithmetic, which is exactly what a stack container does — including getting row heights from
+   * the children instead of from a guessed pitch.
+   */
+  private final VStack stack = new VStack();
+
   private int selectedIndex = 0;
 
   /**
+   * Creates a group sized by its enclosing layout container.
+   *
    * @param skin skin shared by all checkboxes (font defines box size)
    * @param pixel 1×1 white texture passed to each {@link Checkbox}
    * @param labels option labels, one per checkbox
-   * @param x left edge of all checkboxes in world coordinates
-   * @param startY text baseline of the first (topmost) checkbox
-   * @param spacing vertical distance between consecutive baselines
+   * @param spacing vertical gap between consecutive options
    */
-  public RadioGroup(
-      UiSkin skin, Texture pixel, List<String> labels, float x, float startY, float spacing) {
+  public RadioGroup(UiSkin skin, Texture pixel, List<String> labels, float spacing) {
     Objects.requireNonNull(skin, "skin must not be null");
     Objects.requireNonNull(pixel, "pixel must not be null");
     Objects.requireNonNull(labels, "labels must not be null");
     if (labels.isEmpty()) {
       throw new IllegalArgumentException("labels must not be empty");
     }
-    this.x = x;
-    this.startY = startY;
-    this.spacing = spacing;
+    stack.spacing(spacing).stretchCross(true);
+    addChild(stack);
+
     checkboxes = new ArrayList<>(labels.size());
     for (int i = 0; i < labels.size(); i++) {
       boolean initial = (i == 0);
-      Checkbox cb = new Checkbox(skin, pixel, labels.get(i), x, startY - i * spacing, initial);
+      Checkbox cb = new Checkbox(skin, pixel, labels.get(i), initial);
       final int index = i;
       cb.onChanged.connect(
           checked -> {
@@ -81,25 +88,45 @@ public final class RadioGroup extends CompositeWidget {
             }
           });
       checkboxes.add(cb);
-      addChild(cb);
+      stack.add(cb);
     }
   }
-
-  // -------------------------------------------------------------------------
-  // CompositeWidget
-  // -------------------------------------------------------------------------
 
   /**
-   * Repositions each checkbox along the vertical stack. Called automatically by {@link
-   * CompositeWidget#layout()} before children lay themselves out, so a viewport resize correctly
-   * re-flows the group.
+   * Creates a group whose top-left corner is at {@code (x, startY)}, for hand-positioned screens.
+   *
+   * @param spacing vertical gap between consecutive options
    */
-  @Override
-  protected void doLayout() {
-    for (int i = 0; i < checkboxes.size(); i++) {
-      checkboxes.get(i).setPosition(x, startY - i * spacing);
-    }
+  public RadioGroup(
+      UiSkin skin, Texture pixel, List<String> labels, float x, float startY, float spacing) {
+    this(skin, pixel, labels, spacing);
+    Vector2 natural = preferredSize(new Vector2());
+    setBounds(x, startY - natural.y, natural.x, natural.y);
   }
+
+  // -------------------------------------------------------------------------
+  // BoundedWidget
+  // -------------------------------------------------------------------------
+
+  /** Natural size: whatever the internal stack needs. */
+  @Override
+  public Vector2 preferredSize(Vector2 out) {
+    return stack.preferredSize(out);
+  }
+
+  @Override
+  protected void doBoundedLayout() {
+    if (frame.width <= 0f || frame.height <= 0f) {
+      Vector2 natural = stack.preferredSize(scratch);
+      if (frame.width <= 0f) frame.width = natural.x;
+      if (frame.height <= 0f) frame.height = natural.y;
+    }
+    bounds.set(frame);
+    stack.setBounds(frame.x, frame.y, frame.width, frame.height);
+  }
+
+  /** Scratch for measuring, so layout allocates nothing. */
+  private final Vector2 scratch = new Vector2();
 
   // doDraw() not needed — children draw themselves.
   // doReset() not needed — children reset themselves.

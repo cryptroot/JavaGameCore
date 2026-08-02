@@ -34,5 +34,50 @@
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Test scope only. com.cryptroot.core.uitest boots a real GL window to drive and capture
+             the UI, which needs a backend and the desktop natives; FreeType's natives come along
+             because AssetRegistry rasterises every font through FreeTypeFontGenerator. core's main
+             dependency set stays backend-agnostic, as the module contract requires. -->
+        <dependency>
+            <groupId>com.badlogicgames.gdx</groupId>
+            <artifactId>gdx-backend-lwjgl3</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.badlogicgames.gdx</groupId>
+            <artifactId>gdx-platform</artifactId>
+            <classifier>natives-desktop</classifier>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.badlogicgames.gdx</groupId>
+            <artifactId>gdx-freetype-platform</artifactId>
+            <classifier>natives-desktop</classifier>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Publishes src/test/java as core-<version>-tests.jar so a game module can depend on
+                 com.cryptroot.core.uitest (the UI interaction harness) from its own tests. When the
+                 game is built in the same reactor run as core (an aggregator root, or `-am`), Maven
+                 resolves this to core/target/test-classes and nothing else is needed. Building that
+                 module on its own resolves against the local repository, so run `mvn install
+                 -DskipTests` here first. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>test-jar</id>
+                        <goals>
+                            <goal>test-jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

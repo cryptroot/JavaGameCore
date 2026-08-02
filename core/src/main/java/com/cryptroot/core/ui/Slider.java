@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.PolygonSpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Vector2;
 import com.cryptroot.core.event.Signal;
 import java.util.Objects;
 
@@ -39,17 +40,38 @@ public final class Slider extends BoundedWidget {
   /** Fires whenever the value changes, carrying the new value. */
   public final Signal<Float> onChanged = new Signal<>();
 
+  /** Natural track width when nothing constrains the slider. */
+  private static final float DEFAULT_TRACK_W = 200f;
+
   private final Texture pixel;
   private final TextLabel valueLabelText;
   private final FillTrack fillTrack;
 
-  private final float trackX; // left edge of track
-  private final float trackY; // Y centre of track
-  private final float trackW; // total track width
   private final float min;
   private final float max;
 
   private float value;
+
+  // Track geometry is derived from `frame` rather than stored, so the slider can be moved and
+  // resized
+  // by a layout container like any other widget. `frame` is the full interactive rectangle: the
+  // track
+  // plus the knob overhang on each side and the vertical hit slop above and below.
+
+  /** Left edge of the track. */
+  private float trackX() {
+    return frame.x + KNOB_WIDTH / 2f;
+  }
+
+  /** Width of the track itself, excluding the knob overhang. */
+  private float trackW() {
+    return Math.max(0f, frame.width - KNOB_WIDTH);
+  }
+
+  /** Y centre of the track. */
+  private float trackY() {
+    return frame.y + HIT_EXTRA + KNOB_HEIGHT / 2f;
+  }
 
   /**
    * @param pixel 1×1 white texture for all solid-rect drawing
@@ -77,15 +99,36 @@ public final class Slider extends BoundedWidget {
           "max must be greater than min: min=" + min + ", max=" + max);
     }
     this.pixel = pixel;
-    this.trackX = trackX;
-    this.trackY = trackY;
-    this.trackW = trackW;
     this.min = min;
     this.max = max;
     // Label is centred around the knob x (targetWidth=0 = "centre around x" mode).
     valueLabelText = new TextLabel(font, "", 0f, 0f).setAlign(TextLabel.HAlign.CENTER, 0f);
     fillTrack = new FillTrack(pixel, COLOR_TRACK_BG, COLOR_TRACK_FILL);
+    // Convert the track-centred coordinates into this widget's outer rectangle.
+    setBounds(
+        trackX - KNOB_WIDTH / 2f,
+        trackY - KNOB_HEIGHT / 2f - HIT_EXTRA,
+        trackW + KNOB_WIDTH,
+        KNOB_HEIGHT + HIT_EXTRA * 2f);
     setValue(MathUtils.clamp(initial, min, max));
+  }
+
+  /**
+   * Creates a slider sized by its enclosing layout container.
+   *
+   * @param min minimum value (inclusive)
+   * @param max maximum value (inclusive); must be &gt; {@code min}
+   * @param initial starting value; clamped to [{@code min}, {@code max}]
+   */
+  public Slider(Texture pixel, BitmapFont font, float min, float max, float initial) {
+    this(pixel, font, 0f, 0f, DEFAULT_TRACK_W, min, max, initial);
+    setBounds(0f, 0f, 0f, 0f);
+  }
+
+  /** Natural size: a default-width track plus the knob overhang and vertical hit slop. */
+  @Override
+  public Vector2 preferredSize(Vector2 out) {
+    return out.set(DEFAULT_TRACK_W + KNOB_WIDTH, KNOB_HEIGHT + HIT_EXTRA * 2f);
   }
 
   public float getValue() {
@@ -104,12 +147,12 @@ public final class Slider extends BoundedWidget {
 
   @Override
   protected void doBoundedLayout() {
-    bounds.set(
-        trackX - KNOB_WIDTH / 2f,
-        trackY - KNOB_HEIGHT / 2f - HIT_EXTRA,
-        trackW + KNOB_WIDTH,
-        KNOB_HEIGHT + HIT_EXTRA * 2f);
-    fillTrack.setBounds(trackX, trackY - TRACK_HEIGHT / 2f, trackW, TRACK_HEIGHT);
+    if (frame.width <= 0f || frame.height <= 0f) {
+      Vector2 natural = preferredSize(new Vector2());
+      frame.setSize(natural.x, natural.y);
+    }
+    bounds.set(frame);
+    fillTrack.setBounds(trackX(), trackY() - TRACK_HEIGHT / 2f, trackW(), TRACK_HEIGHT);
     syncLabelWidget();
     valueLabelText.layout();
   }
@@ -135,7 +178,7 @@ public final class Slider extends BoundedWidget {
   @Override
   protected void doDraw(PolygonSpriteBatch batch) {
     float ratio = (value - min) / (max - min);
-    float knobCentreX = trackX + ratio * trackW;
+    float knobCentreX = trackX() + ratio * trackW();
 
     // Track background + fill
     fillTrack.setFillRatio(ratio);
@@ -144,7 +187,7 @@ public final class Slider extends BoundedWidget {
     // Knob
     batch.setColor(hovered ? COLOR_KNOB_HOVER : COLOR_KNOB);
     batch.draw(
-        pixel, knobCentreX - KNOB_WIDTH / 2f, trackY - KNOB_HEIGHT / 2f, KNOB_WIDTH, KNOB_HEIGHT);
+        pixel, knobCentreX - KNOB_WIDTH / 2f, trackY() - KNOB_HEIGHT / 2f, KNOB_WIDTH, KNOB_HEIGHT);
 
     batch.setColor(Color.WHITE);
 
@@ -157,8 +200,11 @@ public final class Slider extends BoundedWidget {
   // -------------------------------------------------------------------------
 
   private void applyPointerX(float worldX) {
-    float clamped = MathUtils.clamp(worldX, trackX, trackX + trackW);
-    float newValue = min + (clamped - trackX) / trackW * (max - min);
+    float tx = trackX();
+    float tw = trackW();
+    if (tw <= 0f) return;
+    float clamped = MathUtils.clamp(worldX, tx, tx + tw);
+    float newValue = min + (clamped - tx) / tw * (max - min);
     newValue = MathUtils.clamp(newValue, min, max);
     if (newValue != value) {
       value = newValue;
@@ -169,8 +215,8 @@ public final class Slider extends BoundedWidget {
 
   /** Syncs the TextLabel text and position to the current value. */
   private void syncLabelWidget() {
-    float knobCentreX = trackX + (value - min) / (max - min) * trackW;
-    float labelY = trackY - TRACK_HEIGHT / 2f - 4f;
+    float knobCentreX = trackX() + (value - min) / (max - min) * trackW();
+    float labelY = trackY() - TRACK_HEIGHT / 2f - 4f;
     valueLabelText.setText(String.format("%.1f", value));
     valueLabelText.setPosition(knobCentreX, labelY);
   }
