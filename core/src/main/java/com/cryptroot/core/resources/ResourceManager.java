@@ -159,6 +159,50 @@ public final class ResourceManager implements Disposable {
   }
 
   /**
+   * Returns a {@link Texture} loaded from an absolute filesystem path (a file <em>outside</em> the
+   * classpath), applying the given filters on first load and caching the result under the same
+   * ownership as every other texture — it is disposed in {@link #dispose()} like a classpath
+   * texture, so callers must never dispose it themselves.
+   *
+   * <p>Unlike {@link #createTexture(String, TextureFilter, TextureFilter)}, which resolves against
+   * the classpath, this resolves against {@code Gdx.files.absolute(path)}. It exists for content
+   * that is not packaged into the application (for example a data-driven project whose image assets
+   * live in a folder chosen at runtime rather than compiled onto the classpath).
+   *
+   * <p>The cache key is prefixed to keep it in a namespace distinct from classpath keys, so an
+   * absolute path can never collide with a classpath string.
+   *
+   * @param absolutePath absolute filesystem path to an image file
+   * @param minFilter minification filter to apply on first load
+   * @param magFilter magnification filter to apply on first load
+   * @return the cached-or-newly-created {@link Texture}
+   */
+  public Texture loadExternalTexture(
+      String absolutePath, TextureFilter minFilter, TextureFilter magFilter) {
+    Objects.requireNonNull(absolutePath, "absolutePath must not be null");
+    Objects.requireNonNull(minFilter, "minFilter must not be null");
+    Objects.requireNonNull(magFilter, "magFilter must not be null");
+    return textureCache.computeIfAbsent(
+        "external:" + absolutePath,
+        key -> {
+          Texture texture = new Texture(Gdx.files.absolute(absolutePath));
+          texture.setFilter(minFilter, magFilter);
+          return texture;
+        });
+  }
+
+  /**
+   * Convenience overload of {@link #loadExternalTexture(String, TextureFilter, TextureFilter)}
+   * using {@link TextureFilter#Linear} / {@link TextureFilter#Linear} filtering.
+   *
+   * @param absolutePath absolute filesystem path to an image file
+   * @return the cached-or-newly-created {@link Texture}
+   */
+  public Texture loadExternalTexture(String absolutePath) {
+    return loadExternalTexture(absolutePath, TextureFilter.Linear, TextureFilter.Linear);
+  }
+
+  /**
    * Returns a {@link TextureAtlas} loaded from the given classpath, caching the result. The atlas
    * (and its page textures) is owned by this manager and disposed in {@link #dispose()}.
    *
