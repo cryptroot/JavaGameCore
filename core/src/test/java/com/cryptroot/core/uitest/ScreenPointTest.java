@@ -14,6 +14,12 @@ import org.junit.jupiter.api.Test;
  */
 class ScreenPointTest {
 
+  static {
+    // Matrix4.prj (used by OrthographicCamera.update) is a native method; without a full
+    // Application, nothing else triggers loading libgdx's shared library.
+    com.badlogic.gdx.utils.GdxNativesLoader.load();
+  }
+
   private static final int WORLD_W = 100;
   private static final int WORLD_H = 50;
   private static final int WINDOW_W = 200;
