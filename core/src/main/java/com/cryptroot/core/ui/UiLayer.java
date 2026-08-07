@@ -606,7 +606,7 @@ public final class UiLayer {
 
       @Override
       public boolean touchUp(int screenX, int screenY, int pointerId, int button) {
-        if (dragTarget == null) return false;
+        if (button != Input.Buttons.LEFT || dragTarget == null) return false;
         eventPointer.set(screenX, screenY, 0f);
         viewport.unproject(eventPointer);
         UiWidget released = dragTarget;
@@ -614,7 +614,7 @@ public final class UiLayer {
         // release handler (screen transitions), and must not leave a stale capture behind.
         dragTarget = null;
         released.released(eventPointer.x, eventPointer.y);
-        return false;
+        return true;
       }
 
       @Override
