@@ -15,8 +15,11 @@ import com.cryptroot.core.render.system.UpdateSystem;
 import com.cryptroot.core.render.system.WorldRenderSystem;
 import com.cryptroot.core.ui.UiLayer;
 import com.cryptroot.core.world.World;
+import com.cryptroot.core.world.WorldEntity;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Orchestrates the full per-frame render pipeline for a world-camera scene.
@@ -146,15 +149,22 @@ public final class RenderPipeline implements Disposable {
    * @return {@code true} if an entity was hit
    */
   public boolean handleClick(World world, float worldX, float worldY) {
+    return clickAt(world, worldX, worldY).isPresent();
+  }
+
+  /**
+   * As {@link #handleClick}, but reports <em>which</em> entity was hit.
+   *
+   * <p>Preferred where the caller must react to the identity of what was clicked rather than merely
+   * whether the click landed — e.g. a viewport widget re-emitting the hit as a UI signal. Entities
+   * that own their reaction should still attach a {@link
+   * com.cryptroot.core.world.ClickableComponent} instead of having the caller demultiplex here.
+   */
+  public Optional<WorldEntity> clickAt(World world, float worldX, float worldY) {
     Objects.requireNonNull(world, "world must not be null");
-    return clickSystem
-        .handleClick(world, worldX, worldY)
-        .map(
-            e -> {
-              dialogueSystem.onEntityClicked(e);
-              return true;
-            })
-        .orElse(false);
+    Optional<WorldEntity> hit = clickSystem.handleClick(world, worldX, worldY);
+    hit.ifPresent(dialogueSystem::onEntityClicked);
+    return hit;
   }
 
   // -------------------------------------------------------------------------
@@ -201,14 +211,65 @@ public final class RenderPipeline implements Disposable {
 
     batch.setProjectionMatrix(sceneCamera.combined);
     batch.begin();
-    worldRenderSystem.drawBackground(world, batch);
-    worldRenderSystem.drawWorldSorted(world, batch);
-    worldRenderSystem.drawForeground(world, batch);
-    worldRenderSystem.drawUi(world, batch);
+    drawSceneInto(world, batch);
     if (sceneOutlineCaptured) {
       worldRenderSystem.blitOutline(batch, sor, sceneCamera, 1f);
     }
     batch.end();
+  }
+
+  /**
+   * Draws every visual pass of {@code world} into an already-open batch, in order: BACKGROUND,
+   * WORLD (Y-sorted), FOREGROUND_WORLD, UI.
+   *
+   * <p>Owns nothing else — no {@code begin()}/{@code end()}, no projection matrix, no outline blit,
+   * no normal-mapped pass. That is the whole point: the caller decides where the scene lands. A
+   * screen-filling scene sets the projection from a camera ({@link #render}, {@link #renderScene});
+   * a scene drawn inside a UI widget instead composes a {@link SceneTransform} into the batch's
+   * <em>transform</em> matrix and leaves the enclosing projection untouched (see {@link
+   * com.cryptroot.core.ui.WorldViewport}).
+   *
+   * <p>Because it makes no assumption about the active coordinate space, this is also the only pass
+   * method that is safe to call more than once per frame — once per viewport onto the same world.
+   */
+  public void drawSceneInto(World world, PolygonSpriteBatch batch) {
+    Objects.requireNonNull(world, "world must not be null");
+    Objects.requireNonNull(batch, "batch must not be null");
+    worldRenderSystem.drawBackground(world, batch);
+    worldRenderSystem.drawWorldSorted(world, batch);
+    worldRenderSystem.drawForeground(world, batch);
+    worldRenderSystem.drawUi(world, batch);
+  }
+
+  // -------------------------------------------------------------------------
+  // Hover / outline state (for callers that draw their own outline pass)
+  // -------------------------------------------------------------------------
+
+  /**
+   * The entity currently under the cursor as of the last {@link #processHover}, or {@code null}.
+   */
+  public WorldEntity hoveredEntity() {
+    return hoverSystem.hoveredEntity();
+  }
+
+  /** The current hover-outline fade alpha (0–1). */
+  public float hoverAlpha() {
+    return hoverSystem.hoverAlpha();
+  }
+
+  /**
+   * The entities that should be outlined this frame: every {@link
+   * com.cryptroot.core.world.AlwaysOutlinedComponent} carrier plus the hovered entity.
+   *
+   * <p>GL-free. Exposed for callers that run their own capture pass because they draw the scene
+   * under a transform this pipeline knows nothing about — {@link
+   * com.cryptroot.core.ui.WorldViewport} feeds these into the shared {@link
+   * com.cryptroot.core.ui.UiLayer} outline capture rather than starting a second one.
+   *
+   * <p>The returned list is a reused internal buffer; copy it if it must outlive the call.
+   */
+  public List<WorldEntity> outlineTargets(World world) {
+    return outlineSystem.collectOutlineTargets(world, hoverSystem);
   }
 
   /** Resets hover and outline state. Call from screen {@code hide()}. */

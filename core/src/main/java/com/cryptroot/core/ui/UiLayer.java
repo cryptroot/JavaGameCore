@@ -606,8 +606,15 @@ public final class UiLayer {
 
       @Override
       public boolean touchUp(int screenX, int screenY, int pointerId, int button) {
+        if (button != Input.Buttons.LEFT || dragTarget == null) return false;
+        eventPointer.set(screenX, screenY, 0f);
+        viewport.unproject(eventPointer);
+        UiWidget released = dragTarget;
+        // Cleared before the callback: a widget may legitimately tear down this layer from its
+        // release handler (screen transitions), and must not leave a stale capture behind.
         dragTarget = null;
-        return false;
+        released.released(eventPointer.x, eventPointer.y);
+        return true;
       }
 
       @Override
