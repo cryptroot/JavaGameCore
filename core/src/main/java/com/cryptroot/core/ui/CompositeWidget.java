@@ -216,6 +216,12 @@ public abstract class CompositeWidget implements UiWidget {
     for (UiWidget c : children) c.dragged(worldX, worldY);
   }
 
+  /** Forwards to all children. Override to add composite-level release behaviour. */
+  @Override
+  public void released(float worldX, float worldY) {
+    for (UiWidget c : children) c.released(worldX, worldY);
+  }
+
   /** Forwards to children in reverse-insertion order; returns {@code true} on first consumer. */
   @Override
   public boolean scrolled(float worldX, float worldY, float amountX, float amountY) {

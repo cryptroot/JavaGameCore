@@ -189,4 +189,22 @@ public interface UiWidget {
    * @param worldY unprojected world Y of the current pointer position
    */
   default void dragged(float worldX, float worldY) {}
+
+  /**
+   * Called by {@link UiLayer} when the pointer is released after this widget consumed a {@link
+   * #hit(float, float)} call — the closing bracket of the {@code hit} / {@code dragged} gesture.
+   *
+   * <p>Delivered even when the pointer has strayed outside the widget's bounds, and exactly once
+   * per captured gesture. Without it, a widget that must know when a press <em>ends</em> (to end a
+   * pan, commit a click, or drop a dragged item) has to poll {@link
+   * com.badlogic.gdx.Input#isTouched()} from {@link #update(float)}, which sees the global pointer
+   * rather than this widget's own gesture and cannot tell a release from a press that started
+   * somewhere else.
+   *
+   * <p>The default implementation is a no-op.
+   *
+   * @param worldX unprojected world X of the pointer at release
+   * @param worldY unprojected world Y of the pointer at release
+   */
+  default void released(float worldX, float worldY) {}
 }
