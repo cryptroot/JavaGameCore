@@ -114,6 +114,11 @@ Worked examples:
   `EventBus.publish` no-ops when there are no subscribers. Document the fail-soft behavior in the
   method's Javadoc so it reads as a choice, not a missing check. Never let bad input silently
   propagate un-validated and un-documented.
+- **Code comments refer to real-timer functionality, not archaeological git history.** A code comment 
+  that refers to a previous state and how that state is now fixed becomes stale the moment a third 
+  iteration occurs. Code should refer to exactly what it does "now", not what it did before. No 
+  references to the past should be made, we use version control to lookup the history of what the code 
+  did, it doesn't need a running log of 'we did this, then changed it, then changed it again!'. 
 
 ## Build & test
 Run from `Java/` directory. PowerShell chains with `;`.
