@@ -55,7 +55,7 @@ import java.util.Objects;
  * #update(float)}, and have access to the protected fields {@link #skin}, {@link #clicked}, and
  * {@link #clickTimer}.
  */
-public class Button extends BoundedWidget {
+public class Button extends BoundedWidget implements Activatable {
 
   /** Seconds the selected slice is shown before onClick fires. */
   private static final float CLICK_FEEDBACK_DELAY = 0.08f;
@@ -75,6 +75,7 @@ public class Button extends BoundedWidget {
 
   protected boolean clicked;
   protected float clickTimer;
+  private boolean selected;
 
   /**
    * Creates a button sized to its own label. Position and final size come from the enclosing layout
@@ -199,7 +200,7 @@ public class Button extends BoundedWidget {
 
   @Override
   protected void doDraw(PolygonSpriteBatch batch) {
-    if (clicked) {
+    if (clicked || selected) {
       skin.selectedSlice().draw(batch, bounds.x, bounds.y, bounds.width, bounds.height);
     } else if (hovered) {
       batch.setColor(HOVER_DARKEN, HOVER_DARKEN, HOVER_DARKEN, 1f);
@@ -242,6 +243,7 @@ public class Button extends BoundedWidget {
   protected void doBoundedReset() {
     clicked = false;
     clickTimer = 0f;
+    selected = false;
   }
 
   // -------------------------------------------------------------------------
@@ -256,5 +258,24 @@ public class Button extends BoundedWidget {
     clicked = true;
     hovered = false;
     clickTimer = CLICK_FEEDBACK_DELAY;
+  }
+
+  // -------------------------------------------------------------------------
+  // Activatable
+  // -------------------------------------------------------------------------
+
+  /** Whether this is the current keyboard selection, per {@link NavigationGroup}. */
+  public boolean isSelected() {
+    return selected;
+  }
+
+  @Override
+  public void setSelected(boolean selected) {
+    this.selected = selected;
+  }
+
+  @Override
+  public void activate() {
+    triggerClick();
   }
 }
