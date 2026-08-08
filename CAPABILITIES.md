@@ -69,13 +69,16 @@ Package prefixes: `com.cryptroot.core` (core), `com.cryptroot.tiled` (tiled).
 | Entity tooltip text | `core.world.TooltipComponent` | `tooltip()` (`null` suppresses); `of(String)` / `of(Supplier<String>)`. Presentation belongs to the host — `WorldViewport` draws it in **UI** space near the cursor so it stays legible at any zoom |
 | World-space text / captions | `core.world.component.TextRenderComponent` | a line of text aligned inside a world-space box, in any `RenderPass`, with an optional drop shadow; reuses `ui.TextLabel`'s `GlyphLayout` caching. Scales with scene zoom (unlike a tooltip), which is what a caption painted onto the world should do |
 | Pointer-release hook | `core.ui.UiWidget.released(x,y)` | closing bracket of the `hit`/`dragged` gesture, delivered once even if the pointer strayed outside; routed by `UiLayer`'s `touchUp`. **Use this instead of polling `Gdx.input.isTouched()`** from `update()`, which sees the global pointer rather than this widget's own gesture |
+| Keyboard-only menu navigation | `core.ui.NavigationGroup`, `core.ui.Activatable` | ordered list of `Activatable` widgets; UP/DOWN or LEFT/RIGHT move the selection (per `Orientation`), ENTER/SPACE activates it; `keyDown(int)`/`inputAdapter()` compose into a screen's `InputMultiplexer`. `Button implements Activatable` (`setSelected`/`activate` — the latter delegates to `triggerClick()`). Deliberately no mouse-hover sync — GL-free, unit-testable with a fake `Activatable` |
 
 ## Engine-parity backlog (with Unity) — deliberately NOT built
 These are not needed by the current game (it uses tile-occupancy + distance checks). Build the
 reusable core primitive **only when a game first needs it** — still in `core`, not stubbed in your
 game code (`demo` or an external consumer).
-- **Action-map / multi-button / gamepad input.** Only left-click, hover, drag-pan, scroll-zoom and
-  UI focus keys exist; raw input is libGDX `InputProcessor`/`InputMultiplexer`. → future `core.input`.
+- **Action-map / multi-button / gamepad input.** Only left-click, hover, drag-pan, scroll-zoom,
+  `core.ui.NavigationGroup` keyboard menu nav, and UI focus keys exist; raw input is libGDX
+  `InputProcessor`/`InputMultiplexer`. Gamepad support and a rebindable action-map remain future
+  `core.input` work.
 - **Save/load persistence.** In-memory only.
 
 
